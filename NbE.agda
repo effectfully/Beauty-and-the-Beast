@@ -2,6 +2,8 @@
 
 module SC.NbE where
 
+open import Function
+
 open import SC.Basic
 
 infix 3 _⊢ⁿᵉ_ _⊢ⁿᶠ_ _⊢ˢⁿᵉ_ _⊢ˢⁿᶠ_ _↦_
@@ -58,11 +60,11 @@ mutual
     nilˢⁿᶠ  : ∀ {σ} -> Γ ⊢ˢⁿᶠ list σ
     _::ˢⁿᶠ_ : ∀ {σ} -> Γ ⊢ˢⁿᶠ σ      -> Γ ⊢ˢⁿᶠ list σ -> Γ ⊢ˢⁿᶠ list σ
 
-vzˢⁿᶠ : ∀ {Γ σ} -> Γ ▻ σ ⊢ˢⁿᶠ σ
-vzˢⁿᶠ = neˢ (varˢⁿᵉ vz)
+varˢⁿᶠ : ∀ {Γ σ} -> σ ∈ Γ -> Γ ⊢ˢⁿᶠ σ
+varˢⁿᶠ = neˢ ∘ varˢⁿᵉ
 
 fixˢⁿᶠ : ∀ {Γ σ} -> Γ ⊢ˢⁿᶠ σ ⇒ σ -> Γ ⊢ˢⁿᶠ σ
-fixˢⁿᶠ f = neˢ (fixˢⁿᵉ f)
+fixˢⁿᶠ = neˢ ∘ fixˢⁿᵉ
 
 applyˢⁿᶠ : ∀ {Γ Δ σ τ} -> Γ ⊆ Δ -> Γ ⊢ˢⁿᶠ σ ⇒ τ -> Δ ⊢ˢⁿᶠ σ -> Δ ⊢ˢⁿᶠ τ
 applyˢⁿᶠ φ (neˢ f)         x = neˢ (weakenˢⁿᵉ φ f ·ˢⁿᵉ x)
@@ -117,7 +119,7 @@ mutual
 
   quoteⁿᶠ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ˢⁿᶠ σ -> Δ ⊢ⁿᶠ σ
   quoteⁿᶠ φ (neˢ x)         = ne (quoteⁿᵉ φ x)
-  quoteⁿᶠ φ (ƛˢⁿᶠ f)        = ƛⁿᶠ (quoteⁿᶠ (keep φ) (f top vzˢⁿᶠ))
+  quoteⁿᶠ φ (ƛˢⁿᶠ f)        = ƛⁿᶠ (quoteⁿᶠ (keep φ) (f top (varˢⁿᶠ vz)))
   quoteⁿᶠ φ (weakenˢⁿᶠ ψ x) = quoteⁿᶠ (φ ∘ˢᵘᵇ ψ) x
   quoteⁿᶠ φ  zˢⁿᶠ        = zⁿᶠ
   quoteⁿᶠ φ (sˢⁿᶠ x)     = sⁿᶠ (quoteⁿᶠ φ x)
@@ -126,7 +128,7 @@ mutual
 
 idᵉⁿᵛ : ∀ {Γ} -> Γ ↦ Γ
 idᵉⁿᵛ {ε}     = Ø
-idᵉⁿᵛ {Γ ▻ σ} = weakenᵉⁿᵛ top idᵉⁿᵛ ▷ vzˢⁿᶠ
+idᵉⁿᵛ {Γ ▻ σ} = weakenᵉⁿᵛ top idᵉⁿᵛ ▷ varˢⁿᶠ vz
 
 norm : ∀ {Γ σ} -> Γ ⊢ σ -> Γ ⊢ σ
 norm x = fromⁿᶠ (quoteⁿᶠ stop (⟦ x ⟧ idᵉⁿᵛ))
