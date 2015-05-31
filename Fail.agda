@@ -1,4 +1,4 @@
-module SC.Main where
+module SC.Fail where
 
 open import Function
 open import Relation.Binary.PropositionalEquality
