@@ -1,5 +1,7 @@
 {-# OPTIONS --no-positivity-check #-}
 
+-- Why didn't I implement this using first-order closures?
+
 module SC.NbE where
 
 open import Function

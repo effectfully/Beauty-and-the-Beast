@@ -5,6 +5,7 @@ open import Relation.Binary.PropositionalEquality
 open import Data.Nat hiding (erase) renaming (_≟_ to _≟ℕ_)
 open import Data.Maybe
 open import Category.Monad
+open import Coinduction
 open module M {ℓ} = RawMonad {ℓ} monad public
 
 cong₃ : ∀ {α β γ δ} {A : Set α} {B : Set β} {C : Set γ} {D : Set δ} {x y v w s t}
@@ -157,15 +158,29 @@ toʷ  nil              = nil
 toʷ (x :: xs)         = toʷ x :: toʷ xs
 toʷ (caseList xs y g) = caseList (toʷ xs) (toʷ y) (toʷ g)
 
-unʷ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ʷ σ -> Δ ⊢ σ
-unʷ φ (var v)      = var (weakenᵛᵃʳ φ v)
-unʷ φ (ƛ b)        = ƛ (unʷ (keep φ) b)
-unʷ φ (f · x)      = unʷ φ f · unʷ φ x
-unʷ φ (fix f)      = fix unʷ φ f
-unʷ φ (weaken ψ x) = unʷ (φ ∘ˢᵘᵇ ψ) x
-unʷ φ  z                = z
-unʷ φ (s n)             = s (unʷ φ n)
-unʷ φ (caseNat  n  y g) = caseNat  (unʷ φ n)  (unʷ φ y) (unʷ φ g)
-unʷ φ  nil              = nil
-unʷ φ (x :: xs)         = unʷ φ x :: unʷ φ xs
-unʷ φ (caseList xs y g) = caseList (unʷ φ xs) (unʷ φ y) (unʷ φ g)
+fromʷ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ʷ σ -> Δ ⊢ σ
+fromʷ φ (var v)      = var (weakenᵛᵃʳ φ v)
+fromʷ φ (ƛ b)        = ƛ (fromʷ (keep φ) b)
+fromʷ φ (f · x)      = fromʷ φ f · fromʷ φ x
+fromʷ φ (fix f)      = fix fromʷ φ f
+fromʷ φ (weaken ψ x) = fromʷ (φ ∘ˢᵘᵇ ψ) x
+fromʷ φ  z                = z
+fromʷ φ (s n)             = s (fromʷ φ n)
+fromʷ φ (caseNat  n  y g) = caseNat  (fromʷ φ n)  (fromʷ φ y) (fromʷ φ g)
+fromʷ φ  nil              = nil
+fromʷ φ (x :: xs)         = fromʷ φ x :: fromʷ φ xs
+fromʷ φ (caseList xs y g) = caseList (fromʷ φ xs) (fromʷ φ y) (fromʷ φ g)
+
+unʷ : ∀ {Γ σ} -> Γ ⊢ʷ σ -> Γ ⊢ σ
+unʷ = fromʷ stop
+
+infix 3 _⊢∞_
+
+data _⊢∞_ (Γ : Con) : Type -> Set where
+  ƛ_ : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
+  s        :            Γ ⊢∞ nat    -> Γ ⊢∞ nat
+  caseNat  : ∀ {σ}   -> Γ ⊢  nat    -> Γ ⊢∞ σ      -> Γ ⊢∞ nat ⇒ σ        -> Γ ⊢∞ σ
+  _::_     : ∀ {σ}   -> Γ ⊢∞ σ      -> Γ ⊢∞ list σ -> Γ ⊢∞ list σ
+  caseList : ∀ {σ τ} -> Γ ⊢  list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
+  stop : ∀ {σ} -> Γ ⊢ σ ->    Γ ⊢∞ σ
+  keep : ∀ {σ} -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
