@@ -70,4 +70,4 @@ lam "x0"
    In (var "h3" · var "x0" · var "x1" · var "x2"))))
 ```
 
-which looks OK modulo η-expansion and unnecessary unfolding of the `h6` function.
+which looks OK modulo η-expansion and redundant unfolding of the `h6` function.
