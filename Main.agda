@@ -2,15 +2,15 @@ module SC.Main where
 
 open import Function
 open import Data.Bool.Base
+open import Data.Nat.Base
 open import Data.Maybe.Base
-open import Data.List.Base
+open import Data.Product
+open import Data.List.Base as List
+open import Data.Vec
 open import Coinduction
 
 open import SC.Basic
 open import SC.NbE
-
-weakenʷ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ σ -> Δ ⊢ʷ σ
-weakenʷ ψ = weaken ψ ∘ toʷ
 
 data Perforate Γ σ : Set where
   before : Perforate Γ σ
@@ -45,7 +45,7 @@ perforate (x :: xs)         = compᵖ (mapᵖ (λ ψ xs' -> weakenʷ ψ x :: xs'
 perforate (caseList xs y g) = compᵖ (now xs f) f (perforate xs) where
   f = λ {Δ} (ψ : _ ⊆ Δ) xs' -> caseList xs' (weakenʷ ψ y) (weakenʷ ψ g)
 
-History = List Syntax
+History = List Spine
 
 unroll : ∀ {Γ σ} -> History -> Γ ⊢ σ -> Maybe (Γ ⊢ σ)
 unroll h (f · x) = (_· x) <$> unroll h f
@@ -58,7 +58,7 @@ unroll h  x = nothing
 reduce : ∀ {Γ σ} -> Γ ⊢ σ -> Γ ⊢ σ
 reduce = go [] where
   go : _ -> _ -> _
-  go h x = maybe (go (erase nx ∷ h)) nx (unroll h nx) where nx = norm x
+  go h x = maybe (go (spine nx ∷ h)) nx (unroll h nx) where nx = norm x
 
 revert : ∀ {Γ σ τ} -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ʷ σ -> Δ ⊢ʷ τ) -> Γ ⊢ σ -> Maybe (Γ ⊢ τ)
 revert d x with mapᵖ d (perforate (reduce x))
@@ -87,3 +87,41 @@ build (caseList xs y g) =
         (caseList xs (build y) (build g))
         (revert (λ ψ xs' -> caseList xs' (weakenʷ ψ y) (weakenʷ ψ g)) xs)
 build x = maybe (λ x' -> keep x (♯ build x')) (stop x) (revert (λ ψ x' -> x') x)
+
+toResult : ∀ {Γ σ} -> ℕ -> Vec Name (lengthᶜᵒⁿ Γ) -> Γ ⊢ σ -> Result
+toResult new ρ (var v) = var (lookup (∈-to-Fin v) ρ)
+toResult new ρ (ƛ b)   = lam xn (toResult (suc new) (xn ∷ ρ) b) where xn = "x" ++ℕ new
+toResult new ρ (f · x) = toResult new ρ f · toResult new ρ x
+toResult new ρ (fix f) = ⊥ where postulate ⊥ : _ -- Fix this.
+toResult new ρ  z                = z
+toResult new ρ (s n)             = s (toResult new ρ n)
+toResult new ρ (caseNat  n  y g) = caseNat  (toResult new ρ n)  (toResult new ρ y) (toResult new ρ g)
+toResult new ρ  nil              = nil
+toResult new ρ (x :: xs)         = toResult new ρ x :: toResult new ρ xs
+toResult new ρ (caseList xs y g) = caseList (toResult new ρ xs) (toResult new ρ y) (toResult new ρ g)
+
+{-# NON_TERMINATING #-} -- Due to the absense of a termination criteria.
+residualize : ∀ {Γ σ}
+            -> ℕ -> List (Spine × Name) -> Vec Name (lengthᶜᵒⁿ Γ) -> Γ ⊢∞ σ -> Result
+residualize new Ξ ρ (ƛ b) = lam xn (residualize (suc new) Ξ (xn ∷ ρ) b) where xn = "x" ++ℕ new
+residualize new Ξ ρ (s n)             = s (residualize new Ξ ρ n)
+residualize new Ξ ρ (caseNat  n  y g) =
+  caseNat  (toResult new ρ n)  (residualize new Ξ ρ y) (residualize new Ξ ρ g)
+residualize new Ξ ρ (x :: xs)         = residualize new Ξ ρ x :: residualize new Ξ ρ xs
+residualize new Ξ ρ (caseList xs y g) =
+  caseList (toResult new ρ xs) (residualize new Ξ ρ y) (residualize new Ξ ρ g)
+residualize new Ξ ρ (stop x)   = toResult new ρ x
+residualize new Ξ ρ (keep t x) =
+  maybe  saturate
+        (Let hn := λ-abstract (residualize (suc new) ((et , hn) ∷ Ξ) ρ (♭ x)) In saturate hn)
+        (lookup-for et Ξ)
+  where
+    et = spine t
+    hn = "h" ++ℕ new
+    rs = List.map (flip lookup ρ) (fv stop t)
+    λ-abstract = λ r -> List.foldr  lam                    r      rs
+    saturate   = λ n -> List.foldl (λ r n' -> r · var n') (var n) rs
+
+-- Add identity environment.
+sc : ∀ {σ} -> ε ⊢ σ -> Result
+sc = residualize 0 [] [] ∘ build ∘ norm

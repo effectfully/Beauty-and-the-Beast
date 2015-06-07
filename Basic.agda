@@ -2,15 +2,23 @@ module SC.Basic where
 
 open import Function
 open import Relation.Binary.PropositionalEquality
-open import Data.Nat hiding (erase) renaming (_≟_ to _≟ℕ_)
+open import Data.Nat.Base hiding (erase)
+open import Data.Nat.Show
+open import Data.Fin
 open import Data.Maybe
+open import Data.Product
+open import Data.List.Base
 open import Category.Monad
 open import Coinduction
+open import Data.String.Base as S renaming (String to Name) hiding (_++_; show) public
 open module M {ℓ} = RawMonad {ℓ} monad public
 
 cong₃ : ∀ {α β γ δ} {A : Set α} {B : Set β} {C : Set γ} {D : Set δ} {x y v w s t}
       -> (f : A -> B -> C -> D) -> x ≡ y -> v ≡ w -> s ≡ t -> f x v s ≡ f y w t
 cong₃ f refl refl refl = refl
+
+_++ℕ_ : Name -> ℕ -> Name
+n ++ℕ i = n S.++ show i
 
 infixr 5 _⇒_
 infixl 6 _▻_
@@ -21,21 +29,20 @@ infixl 6 _·_
 infixr 5 _::_
 infix  5 _≟_
 
-data Syntax : Set where
-  -- var  : ℕ -> Syntax
-  var  : Syntax
-  ƛ_   : Syntax -> Syntax
-  _·_  : Syntax -> Syntax -> Syntax
-  fix_ : Syntax -> Syntax
-  z        : Syntax
-  s        : Syntax -> Syntax
-  caseNat  : Syntax -> Syntax -> Syntax -> Syntax
-  nil      : Syntax
-  _::_     : Syntax -> Syntax -> Syntax
-  caseList : Syntax -> Syntax -> Syntax -> Syntax
+-- Do we really need this? We can just compare ordinary terms.
+data Spine : Set where
+  var  : Spine
+  ƛ_   : Spine -> Spine
+  _·_  : Spine -> Spine -> Spine
+  fix_ : Spine -> Spine
+  z        : Spine
+  s        : Spine -> Spine
+  caseNat  : Spine -> Spine -> Spine -> Spine
+  nil      : Spine
+  _::_     : Spine -> Spine -> Spine
+  caseList : Spine -> Spine -> Spine -> Spine
 
-_≟_ : (x y : Syntax) -> Maybe (x ≡ y)
--- var v   ≟ var w   = cong var <$> decToMaybe (v ≟ℕ w)
+_≟_ : (x y : Spine) -> Maybe (x ≡ y)
 var     ≟ var     = just refl
 (ƛ x)   ≟ (ƛ y)   = cong ƛ_ <$> x ≟ y
 (f · x) ≟ (g · y) = cong₂ _·_ <$> f ≟ g ⊛ x ≟ y
@@ -47,6 +54,10 @@ nil             ≟ nil             = just refl
 (x :: xs)       ≟ (y :: ys)       = cong₂ _::_ <$> x ≟ y ⊛ xs ≟ ys
 caseList xs x f ≟ caseList ys y g = cong₃ caseList <$> xs ≟ ys ⊛ x ≟ y ⊛ f ≟ g
 _ ≟ _ = nothing
+
+lookup-for : Spine -> List (Spine × Name) -> Maybe Name
+lookup-for t  []             = nothing
+lookup-for t ((t' , n) ∷ ps) = maybe (just ∘ const n) (lookup-for t ps) (t ≟ t')
 
 data Type : Set where
   _⇒_ : Type -> Type -> Type
@@ -66,9 +77,26 @@ data _⊆_ : Con -> Con -> Set where
   skip : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ     ⊆ Δ ▻ σ
   keep : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ▻ σ ⊆ Δ ▻ σ
 
-fromᵛᵃʳ : ∀ {Γ σ} -> σ ∈ Γ -> ℕ
-fromᵛᵃʳ  vz    = 0
-fromᵛᵃʳ (vs v) = suc (fromᵛᵃʳ v)
+lengthᶜᵒⁿ : Con -> ℕ
+lengthᶜᵒⁿ  ε      = 0
+lengthᶜᵒⁿ (Γ ▻ σ) = suc (lengthᶜᵒⁿ Γ)
+
+∈-to-Fin : ∀ {Γ σ} -> σ ∈ Γ -> Fin (lengthᶜᵒⁿ Γ)
+∈-to-Fin  vz    = zero
+∈-to-Fin (vs v) = suc (∈-to-Fin v)
+
+weakenᵛᵃʳ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> σ ∈ Γ -> σ ∈ Δ
+weakenᵛᵃʳ  stop     v     = v
+weakenᵛᵃʳ (skip ψ)  v     = vs (weakenᵛᵃʳ ψ v)
+weakenᵛᵃʳ (keep ψ)  vz    = vz
+weakenᵛᵃʳ (keep ψ) (vs v) = vs (weakenᵛᵃʳ ψ v)
+
+unweakenᵛᵃʳ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> σ ∈ Δ -> Maybe (σ ∈ Γ)
+unweakenᵛᵃʳ  stop     v     = just v
+unweakenᵛᵃʳ (skip ψ)  vz    = nothing
+unweakenᵛᵃʳ (skip ψ) (vs v) = unweakenᵛᵃʳ ψ v
+unweakenᵛᵃʳ (keep ψ)  vz    = just vz
+unweakenᵛᵃʳ (keep ψ) (vs v) = vs_ <$> unweakenᵛᵃʳ ψ v
 
 top : ∀ {Γ σ} -> Γ ⊆ Γ ▻ σ
 top = skip stop
@@ -79,12 +107,6 @@ skip φ ∘ˢᵘᵇ ψ      = skip (φ ∘ˢᵘᵇ ψ)
 keep φ ∘ˢᵘᵇ stop   = keep φ
 keep φ ∘ˢᵘᵇ skip ψ = skip (φ ∘ˢᵘᵇ ψ)
 keep φ ∘ˢᵘᵇ keep ψ = keep (φ ∘ˢᵘᵇ ψ)
-
-weakenᵛᵃʳ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> σ ∈ Γ -> σ ∈ Δ
-weakenᵛᵃʳ  stop     v     = v
-weakenᵛᵃʳ (skip ψ)  v     = vs (weakenᵛᵃʳ ψ v)
-weakenᵛᵃʳ (keep ψ)  vz    = vz
-weakenᵛᵃʳ (keep ψ) (vs v) = vs (weakenᵛᵃʳ ψ v)
 
 module Term where
   infix  3 _⊢_
@@ -104,21 +126,32 @@ module Term where
     _::_     : ∀ {σ}   -> Γ ⊢ σ      -> Γ ⊢ list σ -> Γ ⊢ list σ
     caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
 
-  erase : ∀ {Γ σ} -> Γ ⊢ σ -> Syntax
-  -- erase (var v) = var (fromᵛᵃʳ v)
-  erase (var v) = var
-  erase (ƛ b)   = ƛ (erase b)
-  erase (f · x) = erase f · erase x
-  erase (fix f) = fix (erase f)
-  erase  z                = z
-  erase (s n)             = s (erase n)
-  erase (caseNat  n  y g) = caseNat  (erase n)  (erase y) (erase g)
-  erase  nil              = nil
-  erase (x :: xs)         = erase x :: erase xs
-  erase (caseList xs y g) = caseList (erase xs) (erase y) (erase g)
+  spine : ∀ {Γ σ} -> Γ ⊢ σ -> Spine
+  spine (var v) = var
+  spine (ƛ b)   = ƛ (spine b)
+  spine (f · x) = spine f · spine x
+  spine (fix f) = fix (spine f)
+  spine  z                = z
+  spine (s n)             = s (spine n)
+  spine (caseNat  n  y g) = caseNat  (spine n)  (spine y) (spine g)
+  spine  nil              = nil
+  spine (x :: xs)         = spine x :: spine xs
+  spine (caseList xs y g) = caseList (spine xs) (spine y) (spine g)
 
   Term : Type -> Set
   Term σ = ∀ {Γ} -> Γ ⊢ σ
+
+  fv : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Δ ⊢ σ -> List (Fin (lengthᶜᵒⁿ Γ))
+  fv ψ (var v) = fromMaybe (∈-to-Fin <$> unweakenᵛᵃʳ ψ v)
+  fv ψ (ƛ b)   = fv (skip ψ) b
+  fv ψ (f · x) = fv ψ f ++ fv ψ x
+  fv ψ (fix f) = fv ψ f
+  fv ψ  z                = []
+  fv ψ (s n)             = fv ψ n
+  fv ψ (caseNat  n  y g) = fv ψ n  ++ fv ψ y ++ fv ψ g
+  fv ψ  nil              = []
+  fv ψ (x :: xs)         = fv ψ x ++ fv ψ xs
+  fv ψ (caseList xs y g) = fv ψ xs ++ fv ψ y ++ fv ψ g
 
 module Termʷ where
   infix  3 _⊢_
@@ -174,6 +207,9 @@ fromʷ φ (caseList xs y g) = caseList (fromʷ φ xs) (fromʷ φ y) (fromʷ φ g
 unʷ : ∀ {Γ σ} -> Γ ⊢ʷ σ -> Γ ⊢ σ
 unʷ = fromʷ stop
 
+weakenʷ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ σ -> Δ ⊢ʷ σ
+weakenʷ ψ = weaken ψ ∘ toʷ
+
 infix 3 _⊢∞_
 
 data _⊢∞_ (Γ : Con) : Type -> Set where
@@ -184,3 +220,15 @@ data _⊢∞_ (Γ : Con) : Type -> Set where
   caseList : ∀ {σ τ} -> Γ ⊢  list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
   stop : ∀ {σ} -> Γ ⊢ σ ->    Γ ⊢∞ σ
   keep : ∀ {σ} -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
+  
+data Result : Set where
+  var        : Name   -> Result
+  _·_        : Result -> Result -> Result
+  lam        : Name   -> Result -> Result
+  Let_:=_In_ : Name   -> Result -> Result -> Result
+  z        : Result
+  s        : Result -> Result
+  caseNat  : Result -> Result -> Result -> Result
+  nil      : Result
+  _::_     : Result -> Result -> Result
+  caseList : Result -> Result -> Result -> Result
