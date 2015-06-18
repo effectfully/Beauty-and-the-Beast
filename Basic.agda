@@ -1,24 +1,22 @@
 module SC.Basic where
 
 open import Function
+open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
+open import Data.Bool
 open import Data.Nat.Base hiding (erase)
 open import Data.Nat.Show
 open import Data.Fin
-open import Data.Maybe
+open import Data.Maybe.Base
 open import Data.Product
 open import Data.List.Base
-open import Category.Monad
 open import Coinduction
-open import Data.String.Base as S renaming (String to Name) hiding (_++_; show) public
-open module M {ℓ} = RawMonad {ℓ} monad public
+open import Data.String.Base as String renaming (String to Name) hiding (_++_; show) public
 
-cong₃ : ∀ {α β γ δ} {A : Set α} {B : Set β} {C : Set γ} {D : Set δ} {x y v w s t}
-      -> (f : A -> B -> C -> D) -> x ≡ y -> v ≡ w -> s ≡ t -> f x v s ≡ f y w t
-cong₃ f refl refl refl = refl
+open import SC.Prelude public
 
 _++ℕ_ : Name -> ℕ -> Name
-n ++ℕ i = n S.++ show i
+n ++ℕ i = n String.++ show i
 
 infixr 5 _⇒_
 infixl 6 _▻_
@@ -27,7 +25,7 @@ infixr 4 vs_
 infixr 3 ƛ_ fix_
 infixl 6 _·_
 infixr 5 _::_
-infix  5 _≟_
+infix  5 _≟'_
 
 -- Do we really need this? We can just compare ordinary terms.
 data Spine : Set where
@@ -42,22 +40,23 @@ data Spine : Set where
   _::_     : Spine -> Spine -> Spine
   caseList : Spine -> Spine -> Spine -> Spine
 
-_≟_ : (x y : Spine) -> Maybe (x ≡ y)
-var     ≟ var     = just refl
-(ƛ x)   ≟ (ƛ y)   = cong ƛ_ <$> x ≟ y
-(f · x) ≟ (g · y) = cong₂ _·_ <$> f ≟ g ⊛ x ≟ y
-(fix f) ≟ (fix g) = cong fix_ <$> f ≟ g
-z               ≟ z               = just refl
-s n             ≟ s m             = cong s <$> n ≟ m
-caseNat  n  x f ≟ caseNat  m  y g = cong₃ caseNat  <$> n  ≟ m  ⊛ x ≟ y ⊛ f ≟ g
-nil             ≟ nil             = just refl
-(x :: xs)       ≟ (y :: ys)       = cong₂ _::_ <$> x ≟ y ⊛ xs ≟ ys
-caseList xs x f ≟ caseList ys y g = cong₃ caseList <$> xs ≟ ys ⊛ x ≟ y ⊛ f ≟ g
-_ ≟ _ = nothing
+_≟'_ : (x y : Spine) -> Maybe (x ≡ y)
+var     ≟' var     = just refl
+(ƛ x)   ≟' (ƛ y)   = cong ƛ_ <$> x ≟' y
+(f · x) ≟' (g · y) = cong₂ _·_ <$> f ≟' g ⊛ x ≟' y
+(fix f) ≟' (fix g) = cong fix_ <$> f ≟' g
+z               ≟' z               = just refl
+s n             ≟' s m             = cong s <$> n ≟' m
+caseNat  n  x f ≟' caseNat  m  y g = cong₃ caseNat  <$> n  ≟' m  ⊛ x ≟' y ⊛ f ≟' g
+nil             ≟' nil             = just refl
+(x :: xs)       ≟' (y :: ys)       = cong₂ _::_ <$> x ≟' y ⊛ xs ≟' ys
+caseList xs x f ≟' caseList ys y g = cong₃ caseList <$> xs ≟' ys ⊛ x ≟' y ⊛ f ≟' g
+_ ≟' _ = nothing
 
-lookup-for : Spine -> List (Spine × Name) -> Maybe Name
-lookup-for t  []             = nothing
-lookup-for t ((t' , n) ∷ ps) = maybe (just ∘ const n) (lookup-for t ps) (t ≟ t')
+instance
+  DecEq-Spine : DecEq Spine
+  DecEq-Spine = record { _≟_ = λ x y -> maybe′ yes (no (const ⊥)) (x ≟' y) }
+    where postulate ⊥ : _
 
 data Type : Set where
   _⇒_ : Type -> Type -> Type
@@ -213,19 +212,22 @@ weakenʷ ψ = weaken ψ ∘ toʷ
 infix 3 _⊢∞_
 
 data _⊢∞_ (Γ : Con) : Type -> Set where
-  ƛ_ : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
+  var : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
+  ƛ_  : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
+  _·_ : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
+  z        :            Γ ⊢∞ nat
   s        :            Γ ⊢∞ nat    -> Γ ⊢∞ nat
-  caseNat  : ∀ {σ}   -> Γ ⊢  nat    -> Γ ⊢∞ σ      -> Γ ⊢∞ nat ⇒ σ        -> Γ ⊢∞ σ
+  caseNat  : ∀ {σ}   -> Γ ⊢∞ nat    -> Γ ⊢∞ σ      -> Γ ⊢∞ nat ⇒ σ        -> Γ ⊢∞ σ
+  nil      : ∀ {σ}   -> Γ ⊢∞ list σ
   _::_     : ∀ {σ}   -> Γ ⊢∞ σ      -> Γ ⊢∞ list σ -> Γ ⊢∞ list σ
-  caseList : ∀ {σ τ} -> Γ ⊢  list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
-  stop : ∀ {σ} -> Γ ⊢ σ ->    Γ ⊢∞ σ
-  keep : ∀ {σ} -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
+  caseList : ∀ {σ τ} -> Γ ⊢∞ list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
+  checkpoint : ∀ {σ} -> Bool -> Name -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
   
 data Result : Set where
-  var        : Name   -> Result
-  _·_        : Result -> Result -> Result
-  lam        : Name   -> Result -> Result
-  Let_:=_In_ : Name   -> Result -> Result -> Result
+  var : Name   -> Result
+  lam : Name   -> Result -> Result
+  _·_ : Result -> Result -> Result
+  Let_:=_In_ : Name -> Result -> Result -> Result
   z        : Result
   s        : Result -> Result
   caseNat  : Result -> Result -> Result -> Result
