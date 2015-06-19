@@ -176,7 +176,7 @@ scε-tconcat-tmap-tconcat  = λ {σ}     -> scε (tconcat-tmap-tconcat {σ})
 
 open import SC.NbE
 
--- Do this two α-equal?
+-- Are this two α-equal?
 scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp   {σ} {τ})
 scε-tfoldr-tfoldr         = λ {σ τ}   -> scε (tfoldr-tfoldr {σ} {τ})
 
