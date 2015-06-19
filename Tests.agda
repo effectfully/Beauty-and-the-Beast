@@ -87,8 +87,8 @@ tfoldr-tapp = ƛ ƛ ƛ ƛ tfoldr · var (vs vs vs vz) · var (vs vs vz) · (tapp
 
 tdouble : Term (nat ⇒ nat)
 tdouble = fix ƛ ƛ caseNat (var vz)
-                    z
-                   (ƛ s (s (var (vs vs vz) · var vz)))
+                     z
+                    (ƛ s (s (var (vs vs vz) · var vz)))
 
 teven : Term (nat ⇒ nat)
 teven = fix ƛ ƛ caseNat (var vz)

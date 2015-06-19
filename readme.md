@@ -71,8 +71,8 @@ which looks OK modulo η-expansion.
 ```
 tdouble : Term (nat ⇒ nat)
 tdouble = fix ƛ ƛ caseNat (var vz)
-                    z
-                   (ƛ s (s (var (vs vs vz) · var vz)))
+                     z
+                    (ƛ s (s (var (vs vs vz) · var vz)))
 
 tplus : Term (nat ⇒ nat ⇒ nat)
 tplus = fix ƛ ƛ ƛ caseNat (var (vs vz))
