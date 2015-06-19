@@ -85,6 +85,11 @@ tmap'-tmap' = ƛ ƛ ƛ tmap' · var (vs vs vz) · (tmap' · var (vs vz) · var v
 tfoldr-tapp : ∀ {σ τ} -> Term ((σ ⇒ τ ⇒ τ) ⇒ τ ⇒ list σ ⇒ list σ ⇒ τ)
 tfoldr-tapp = ƛ ƛ ƛ ƛ tfoldr · var (vs vs vs vz) · var (vs vs vz) · (tapp · var (vs vz) · var vz)
 
+tfoldr-tfoldr : ∀ {σ τ} -> Term ((σ ⇒ τ ⇒ τ) ⇒ τ ⇒ list σ ⇒ list σ ⇒ τ)
+tfoldr-tfoldr = ƛ ƛ ƛ ƛ tfoldr · var (vs vs vs vz)
+                               · (tfoldr · var (vs vs vs vz) · var (vs vs vz) · var vz)
+                               · var (vs vz)
+
 tdouble : Term (nat ⇒ nat)
 tdouble = fix ƛ ƛ caseNat (var vz)
                      z
@@ -157,7 +162,6 @@ scε-id-nat-id-nat         =              scε  id-nat-id-nat
 scε-caseNat-undefined     =              scε  caseNat-undefined -- (case ⊥ of ...) ==> ⊥
 
 -- Not sure.
-scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp {σ} {τ})
 scε-tdouble-tplus         =              scε  tdouble-tplus
 scε-tplus-tdouble         =              scε  tplus-tdouble
 scε-tcycle-cons           =              scε (z :: tcycle · (s z :: z :: nil))
@@ -171,3 +175,60 @@ scε-tmap-titerate         = λ {σ}     -> scε (tmap-titerate {σ})
 scε-tconcat-tmap-tconcat  = λ {σ}     -> scε (tconcat-tmap-tconcat {σ})
 
 open import SC.NbE
+
+-- Do this two α-equal?
+scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp   {σ} {τ})
+scε-tfoldr-tfoldr         = λ {σ τ}   -> scε (tfoldr-tfoldr {σ} {τ})
+
+-- lam "x0"
+-- (lam "x1"
+--  (lam "x2"
+--   (lam "x3"
+--    (Let "r0" :=
+--     lam "x1"
+--     (lam "x0"
+--      (lam "x3"
+--       (lam "x2"
+--        (caseList (var "x2")
+--         (Let "r2" :=
+--          lam "x1"
+--          (lam "x0"
+--           (lam "x3"
+--            (caseList (var "x3") (var "x1")
+--             (lam "x4"
+--              (lam "x5"
+--               (var "x0" · var "x4" ·
+--                (var "r2" · var "x1" · var "x0" · var "x5")))))))
+--          In (var "r2" · var "x1" · var "x0" · var "x3"))
+--         (lam "x4"
+--          (lam "x5"
+--           (var "x0" · var "x4" ·
+--            (var "r0" · var "x1" · var "x0" · var "x3" · var "x5"))))))))
+--     In (var "r0" · var "x1" · var "x0" · var "x3" · var "x2")))))
+
+-- λ {σ} {τ} →
+--   lam "x0"
+--   (lam "x1"
+--    (lam "x2"
+--     (lam "x3"
+--      (Let "r0" :=
+--       lam "x1"
+--       (lam "x0"
+--        (lam "x2"
+--         (lam "x3"
+--          (caseList (var "x2")
+--           (Let "r3" :=
+--            lam "x3"
+--            (lam "x1"
+--             (lam "x0"
+--              (caseList (var "x3") (var "x1")
+--               (lam "x4"
+--                (lam "x5"
+--                 (var "x0" · var "x4" ·
+--                  (var "r3" · var "x5" · var "x1" · var "x0")))))))
+--            In (var "r3" · var "x3" · var "x1" · var "x0"))
+--           (lam "x4"
+--            (lam "x5"
+--             (var "x0" · var "x4" ·
+--              (var "r0" · var "x1" · var "x0" · var "x5" · var "x3"))))))))
+--       In (var "r0" · var "x1" · var "x0" · var "x2" · var "x3")))))

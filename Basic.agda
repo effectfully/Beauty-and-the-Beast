@@ -18,14 +18,14 @@ open import SC.Prelude public
 _++ℕ_ : Name -> ℕ -> Name
 n ++ℕ i = n String.++ show i
 
+infix  5 _≟'_
 infixr 5 _⇒_
 infixl 6 _▻_
-infix  3 _∈_ _⊆_
+infix  3 _∈_ _⊆_ _⊢_ _⊢∞_
 infixr 4 vs_
 infixr 3 ƛ_ fix_
 infixl 6 _·_
 infixr 5 _::_
-infix  5 _≟'_
 
 -- Do we really need this? We can just compare ordinary terms.
 data Spine : Set where
@@ -107,109 +107,56 @@ keep φ ∘ˢᵘᵇ stop   = keep φ
 keep φ ∘ˢᵘᵇ skip ψ = skip (φ ∘ˢᵘᵇ ψ)
 keep φ ∘ˢᵘᵇ keep ψ = keep (φ ∘ˢᵘᵇ ψ)
 
-module Term where
-  infix  3 _⊢_
-  infixr 3 ƛ_ fix_
-  infixl 6 _·_
-  infixr 5 _::_
+data _⊢_ (Γ : Con) : Type -> Set where
+  var  : ∀ {σ}   -> σ ∈ Γ     -> Γ ⊢ σ
+  ƛ_   : ∀ {σ τ} -> Γ ▻ σ ⊢ τ -> Γ ⊢ σ ⇒ τ
+  _·_  : ∀ {σ τ} -> Γ ⊢ σ ⇒ τ -> Γ ⊢ σ     -> Γ ⊢ τ
+  fix_ : ∀ {σ}   -> Γ ⊢ σ ⇒ σ -> Γ ⊢ σ
+  z        :            Γ ⊢ nat
+  s        :            Γ ⊢ nat    -> Γ ⊢ nat
+  caseNat  : ∀ {σ}   -> Γ ⊢ nat    -> Γ ⊢ σ      -> Γ ⊢ nat ⇒ σ        -> Γ ⊢ σ
+  nil      : ∀ {σ}   -> Γ ⊢ list σ
+  _::_     : ∀ {σ}   -> Γ ⊢ σ      -> Γ ⊢ list σ -> Γ ⊢ list σ
+  caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
 
-  data _⊢_ (Γ : Con) : Type -> Set where
-    var  : ∀ {σ}   -> σ ∈ Γ     -> Γ ⊢ σ
-    ƛ_   : ∀ {σ τ} -> Γ ▻ σ ⊢ τ -> Γ ⊢ σ ⇒ τ
-    _·_  : ∀ {σ τ} -> Γ ⊢ σ ⇒ τ -> Γ ⊢ σ     -> Γ ⊢ τ
-    fix_ : ∀ {σ}   -> Γ ⊢ σ ⇒ σ -> Γ ⊢ σ
-    z        :            Γ ⊢ nat
-    s        :            Γ ⊢ nat    -> Γ ⊢ nat
-    caseNat  : ∀ {σ}   -> Γ ⊢ nat    -> Γ ⊢ σ      -> Γ ⊢ nat ⇒ σ        -> Γ ⊢ σ
-    nil      : ∀ {σ}   -> Γ ⊢ list σ
-    _::_     : ∀ {σ}   -> Γ ⊢ σ      -> Γ ⊢ list σ -> Γ ⊢ list σ
-    caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
+spine : ∀ {Γ σ} -> Γ ⊢ σ -> Spine
+spine (var v) = var
+spine (ƛ b)   = ƛ (spine b)
+spine (f · x) = spine f · spine x
+spine (fix f) = fix (spine f)
+spine  z                = z
+spine (s n)             = s (spine n)
+spine (caseNat  n  y g) = caseNat  (spine n)  (spine y) (spine g)
+spine  nil              = nil
+spine (x :: xs)         = spine x :: spine xs
+spine (caseList xs y g) = caseList (spine xs) (spine y) (spine g)
 
-  spine : ∀ {Γ σ} -> Γ ⊢ σ -> Spine
-  spine (var v) = var
-  spine (ƛ b)   = ƛ (spine b)
-  spine (f · x) = spine f · spine x
-  spine (fix f) = fix (spine f)
-  spine  z                = z
-  spine (s n)             = s (spine n)
-  spine (caseNat  n  y g) = caseNat  (spine n)  (spine y) (spine g)
-  spine  nil              = nil
-  spine (x :: xs)         = spine x :: spine xs
-  spine (caseList xs y g) = caseList (spine xs) (spine y) (spine g)
+Term : Type -> Set
+Term σ = ∀ {Γ} -> Γ ⊢ σ
 
-  Term : Type -> Set
-  Term σ = ∀ {Γ} -> Γ ⊢ σ
+fv-all : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Δ ⊢ σ -> List (Fin (lengthᶜᵒⁿ Γ))
+fv-all ψ (var v) = fromMaybe (∈-to-Fin <$> unweakenᵛᵃʳ ψ v)
+fv-all ψ (ƛ b)   = fv-all (skip ψ) b
+fv-all ψ (f · x) = fv-all ψ f ++ fv-all ψ x
+fv-all ψ (fix f) = fv-all ψ f
+fv-all ψ  z                = []
+fv-all ψ (s n)             = fv-all ψ n
+fv-all ψ (caseNat  n  y g) = fv-all ψ n  ++ fv-all ψ y ++ fv-all ψ g
+fv-all ψ  nil              = []
+fv-all ψ (x :: xs)         = fv-all ψ x ++ fv-all ψ xs
+fv-all ψ (caseList xs y g) = fv-all ψ xs ++ fv-all ψ y ++ fv-all ψ g
 
-  fv : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Δ ⊢ σ -> List (Fin (lengthᶜᵒⁿ Γ))
-  fv ψ (var v) = fromMaybe (∈-to-Fin <$> unweakenᵛᵃʳ ψ v)
-  fv ψ (ƛ b)   = fv (skip ψ) b
-  fv ψ (f · x) = fv ψ f ++ fv ψ x
-  fv ψ (fix f) = fv ψ f
-  fv ψ  z                = []
-  fv ψ (s n)             = fv ψ n
-  fv ψ (caseNat  n  y g) = fv ψ n  ++ fv ψ y ++ fv ψ g
-  fv ψ  nil              = []
-  fv ψ (x :: xs)         = fv ψ x ++ fv ψ xs
-  fv ψ (caseList xs y g) = fv ψ xs ++ fv ψ y ++ fv ψ g
-
-module Termʷ where
-  infix  3 _⊢_
-  infixr 3 ƛ_ fix_
-  infixl 6 _·_
-  infixr 5 _::_
-
-  data _⊢_ (Γ : Con) : Type -> Set where
-    var    : ∀ {σ}   -> σ ∈ Γ     -> Γ ⊢ σ
-    ƛ_     : ∀ {σ τ} -> Γ ▻ σ ⊢ τ -> Γ ⊢ σ ⇒ τ
-    _·_    : ∀ {σ τ} -> Γ ⊢ σ ⇒ τ -> Γ ⊢ σ     -> Γ ⊢ τ
-    fix_   : ∀ {σ}   -> Γ ⊢ σ ⇒ σ -> Γ ⊢ σ
-    weaken : ∀ {Ω σ} -> Ω ⊆ Γ     -> Ω ⊢ σ     -> Γ ⊢ σ
-
-    z        :            Γ ⊢ nat
-    s        :            Γ ⊢ nat    -> Γ ⊢ nat
-    caseNat  : ∀ {σ}   -> Γ ⊢ nat    -> Γ ⊢ σ      -> Γ ⊢ nat ⇒ σ        -> Γ ⊢ σ
-    nil      : ∀ {σ}   -> Γ ⊢ list σ
-    _::_     : ∀ {σ}   -> Γ ⊢ σ      -> Γ ⊢ list σ -> Γ ⊢ list σ
-    caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
-
-  Term : Type -> Set
-  Term σ = ∀ {Γ} -> Γ ⊢ σ
-
-open Term  public
-open Termʷ public renaming (_⊢_ to _⊢ʷ_; module _⊢_ to _⊢ʷ_; Term to Termʷ)
-
-toʷ : ∀ {Γ σ} -> Γ ⊢ σ -> Γ ⊢ʷ σ
-toʷ (var v) = var v
-toʷ (ƛ b)   = ƛ (toʷ b)
-toʷ (f · x) = toʷ f · toʷ x
-toʷ (fix f) = fix toʷ f
-toʷ  z                = z
-toʷ (s n)             = s (toʷ n)
-toʷ (caseNat  n  y g) = caseNat  (toʷ n)  (toʷ y) (toʷ g)
-toʷ  nil              = nil
-toʷ (x :: xs)         = toʷ x :: toʷ xs
-toʷ (caseList xs y g) = caseList (toʷ xs) (toʷ y) (toʷ g)
-
-fromʷ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ʷ σ -> Δ ⊢ σ
-fromʷ φ (var v)      = var (weakenᵛᵃʳ φ v)
-fromʷ φ (ƛ b)        = ƛ (fromʷ (keep φ) b)
-fromʷ φ (f · x)      = fromʷ φ f · fromʷ φ x
-fromʷ φ (fix f)      = fix fromʷ φ f
-fromʷ φ (weaken ψ x) = fromʷ (φ ∘ˢᵘᵇ ψ) x
-fromʷ φ  z                = z
-fromʷ φ (s n)             = s (fromʷ φ n)
-fromʷ φ (caseNat  n  y g) = caseNat  (fromʷ φ n)  (fromʷ φ y) (fromʷ φ g)
-fromʷ φ  nil              = nil
-fromʷ φ (x :: xs)         = fromʷ φ x :: fromʷ φ xs
-fromʷ φ (caseList xs y g) = caseList (fromʷ φ xs) (fromʷ φ y) (fromʷ φ g)
-
-unʷ : ∀ {Γ σ} -> Γ ⊢ʷ σ -> Γ ⊢ σ
-unʷ = fromʷ stop
-
-weakenʷ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ σ -> Δ ⊢ʷ σ
-weakenʷ ψ = weaken ψ ∘ toʷ
-
-infix 3 _⊢∞_
+weaken : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ σ -> Δ ⊢ σ
+weaken ψ (var v) = var (weakenᵛᵃʳ ψ v)
+weaken ψ (ƛ b)   = ƛ (weaken (keep ψ) b)
+weaken ψ (f · x) = weaken ψ f · weaken ψ x
+weaken ψ (fix f) = fix weaken ψ f
+weaken ψ  z                = z
+weaken ψ (s n)             = s (weaken ψ n)
+weaken ψ (caseNat  n  y g) = caseNat  (weaken ψ n)  (weaken ψ y) (weaken ψ g)
+weaken ψ  nil              = nil
+weaken ψ (x :: xs)         = weaken ψ x :: weaken ψ xs
+weaken ψ (caseList xs y g) = caseList (weaken ψ xs) (weaken ψ y) (weaken ψ g)
 
 data _⊢∞_ (Γ : Con) : Type -> Set where
   var : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ

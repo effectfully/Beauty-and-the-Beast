@@ -14,41 +14,39 @@ open import SC.NbE
 
 data Perforate Γ σ : Set where
   before : Perforate Γ σ
-  now    : ∀ {τ} -> Γ ⊢ τ -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ʷ τ -> Δ ⊢ʷ σ) -> Perforate Γ σ
+  now    : ∀ {τ} -> Γ ⊢ τ -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ τ -> Δ ⊢ σ) -> Perforate Γ σ
 
 compᵖ : ∀ {Γ σ τ}
-      -> Perforate Γ τ -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ʷ σ -> Δ ⊢ʷ τ) -> Perforate Γ σ -> Perforate Γ τ
+      -> Perforate Γ τ -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ σ -> Δ ⊢ τ) -> Perforate Γ σ -> Perforate Γ τ
 compᵖ p d  before   = p
 compᵖ p d (now a c) = now a (λ ψ x -> d ψ (c ψ x))
 
 mapᵖ : ∀ {Γ σ τ}
-     -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ʷ σ -> Δ ⊢ʷ τ) -> Perforate Γ σ -> Perforate Γ τ
+     -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ σ -> Δ ⊢ τ) -> Perforate Γ σ -> Perforate Γ τ
 mapᵖ = compᵖ before
 
--- We never use `weaken': only `weakenʷ'. So it's pointless.
--- Do we need to apply `toʷ' before perforating? Or even before building?
 perforate : ∀ {Γ σ} -> Γ ⊢ σ -> Perforate Γ σ
 perforate (var v)           = before
 perforate (ƛ b)             = before
-perforate (f · x)           = compᵖ (mapᵖ (λ ψ x'  -> weakenʷ ψ f · x')   (perforate x))
-                                    (λ ψ f'  -> f' · weakenʷ ψ x)
+perforate (f · x)           = compᵖ (mapᵖ (λ ψ x'  -> weaken ψ f · x')   (perforate x))
+                                    (λ ψ f'  -> f' · weaken ψ x)
                                     (perforate f)
 perforate (fix f)           = before
 perforate  z                = before
 perforate (s n)             = mapᵖ (λ ψ n' -> s n') (perforate n)
 perforate (caseNat  n  y g) = compᵖ (now n  f) f (perforate n) where
-  f = λ {Δ} (ψ : _ ⊆ Δ) n'  -> caseNat  n'  (weakenʷ ψ y) (weakenʷ ψ g)
+  f = λ {Δ} (ψ : _ ⊆ Δ) n'  -> caseNat  n'  (weaken ψ y) (weaken ψ g)
 perforate  nil              = before
-perforate (x :: xs)         = compᵖ (mapᵖ (λ ψ xs' -> weakenʷ ψ x :: xs') (perforate xs))
-                                    (λ ψ x'  -> x' :: weakenʷ ψ xs)
+perforate (x :: xs)         = compᵖ (mapᵖ (λ ψ xs' -> weaken ψ x :: xs') (perforate xs))
+                                    (λ ψ x'  -> x' :: weaken ψ xs)
                                     (perforate x)
 perforate (caseList xs y g) = compᵖ (now xs f) f (perforate xs) where
-  f = λ {Δ} (ψ : _ ⊆ Δ) xs' -> caseList xs' (weakenʷ ψ y) (weakenʷ ψ g)
+  f = λ {Δ} (ψ : _ ⊆ Δ) xs' -> caseList xs' (weaken ψ y) (weaken ψ g)
 
-revert : ∀ {Γ σ τ} -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ʷ σ -> Δ ⊢ʷ τ) -> Γ ⊢ σ -> Maybe (Γ ⊢ τ)
+revert : ∀ {Γ σ τ} -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ σ -> Δ ⊢ τ) -> Γ ⊢ σ -> Maybe (Γ ⊢ τ)
 revert d x with mapᵖ d (perforate x)
 ... | before      = nothing
-... | now {τ} a c with λ {Δ} (ψ : _ ⊆ Δ) x -> norm (unʷ (c ψ x))
+... | now {τ} a c with λ {Δ} (ψ : _ ⊆ Δ) x -> norm (c ψ x)
 ... | finish with τ
 ... | nat    = just (caseNat   a
                               (   finish  stop        z            )
@@ -78,17 +76,17 @@ mutual
   build-go  z                = z
   build-go (s n)             = s (build n) -- check (s n) (♯ s (build n))
   build-go (caseNat  n  y g) =
-    maybe  build
-          (check (caseNat  n  y g) (♯ caseNat  (build n)  (build y) (build g)))
-          -- (caseNat  (build n)  (build y) (build g))
-          (revert (λ ψ n'  -> caseNat  n'  (weakenʷ ψ y) (weakenʷ ψ g)) n)
+    maybe′  build
+           (check (caseNat  n  y g) (♯ caseNat  (build n)  (build y) (build g)))
+           -- (caseNat  (build n)  (build y) (build g))
+           (revert (λ ψ n'  -> caseNat  n'  (weaken ψ y) (weaken ψ g)) n)
   build-go  nil              = nil
   build-go (x :: xs)         = build x :: build xs -- check (x :: xs) (♯ (build x :: build xs))
   build-go (caseList xs y g) =
-    maybe  build
-          (check (caseList xs y g) (♯ caseList (build xs) (build y) (build g)))
-          -- (caseList (build xs) (build y) (build g))
-          (revert (λ ψ xs' -> caseList xs' (weakenʷ ψ y) (weakenʷ ψ g)) xs)
+    maybe′  build
+           (check (caseList xs y g) (♯ caseList (build xs) (build y) (build g)))
+           -- (caseList (build xs) (build y) (build g))
+           (revert (λ ψ xs' -> caseList xs' (weaken ψ y) (weaken ψ g)) xs)
 
   build : ∀ {Γ σ} -> Γ ⊢ σ -> Γ ⊢∞ σ
   build x =
@@ -138,7 +136,7 @@ residualize ρ (caseList xs y g) =
 residualize ρ (checkpoint seen rn t x) =
   if seen then saturate rn else (Let rn := λ-abstract (residualize ρ (♭ x)) In saturate rn)
   where
-    rs = List.map (flip lookup ρ) (nub (fv stop t))
+    rs = List.map (flip lookup ρ) (nub (fv-all stop t))
     λ-abstract = λ r -> List.foldr  lam                    r      rs
     saturate   = λ n -> List.foldl (λ r n' -> r · var n') (var n) rs
 
