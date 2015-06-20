@@ -22,7 +22,7 @@ data _⊢_ (Γ : Con) : Type -> Set where
   caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
 ```
 
-NbE, defined in terms of `quote` (or `readback`) with first-order closures (which appear to be somewhat faster than higher-order closures) and explicit weakening in semantics (we collect `weaken`s and then weaken a whole term at once instead of retraversing the term over and over again):
+NbE, defined in terms of `quote` (or `readback`) with first-order closures (which appear to be somewhat faster than higher-order closures) and explicit weakening in the semantics (we collect `weaken`s and then weaken a whole term at once instead of retraversing the term over and over again):
 
 ```
 mutual
@@ -48,16 +48,16 @@ Infinite lambda terms:
 
 ```
 data _⊢∞_ (Γ : Con) : Type -> Set where
-  var        : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
-  ƛ_         : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
-  _·_        : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
-  checkpoint : ∀ {σ} -> Bool -> Name -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
+  var : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
+  ƛ_  : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
+  _·_ : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
   z        :            Γ ⊢∞ nat
   s        :            Γ ⊢∞ nat    -> Γ ⊢∞ nat
   caseNat  : ∀ {σ}   -> Γ ⊢∞ nat    -> Γ ⊢∞ σ      -> Γ ⊢∞ nat ⇒ σ        -> Γ ⊢∞ σ
   nil      : ∀ {σ}   -> Γ ⊢∞ list σ
   _::_     : ∀ {σ}   -> Γ ⊢∞ σ      -> Γ ⊢∞ list σ -> Γ ⊢∞ list σ
   caseList : ∀ {σ τ} -> Γ ⊢∞ list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
+  checkpoint : ∀ {σ} -> Bool -> Name -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
 ```
 
 Every infinite lambda term represents unfolding of a regular lambda term (note the absense of `fix_`). Recursion happens in the `checkpoint` constructor, which also receives some configuration.
@@ -69,7 +69,7 @@ data Result : Set where
   var        : Name   -> Result
   lam        : Name   -> Result -> Result
   _·_        : Result -> Result -> Result
-  Let_:=_In_ : Name -> Result -> Result -> Result
+  Let_:=_In_ : Name   -> Result -> Result -> Result
   z        : Result
   s        : Result -> Result
   caseNat  : Result -> Result -> Result -> Result
@@ -105,6 +105,7 @@ unroll  x = nothing
 
 Supercompilation stuff happens in the `build` function:
 
+```
 mutual
   build-go : ∀ {Γ σ} -> Γ ⊢ σ -> Γ ⊢∞ σ
   build-go (var v) = var v
@@ -129,6 +130,7 @@ mutual
     maybe (λ x' -> check x (♯ build (norm x')))
           (build-go x)
           (unroll x)
+```
 
 In the `caseNat` and `caseList` cases we essentially perform this transformation:
 

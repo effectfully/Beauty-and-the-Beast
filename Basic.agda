@@ -162,22 +162,22 @@ weaken ψ (x :: xs)         = weaken ψ x :: weaken ψ xs
 weaken ψ (caseList xs y g) = caseList (weaken ψ xs) (weaken ψ y) (weaken ψ g)
 
 data _⊢∞_ (Γ : Con) : Type -> Set where
-  var        : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
-  ƛ_         : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
-  _·_        : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
-  checkpoint : ∀ {σ} -> Bool -> Name -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
+  var : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
+  ƛ_  : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
+  _·_ : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
   z        :            Γ ⊢∞ nat
   s        :            Γ ⊢∞ nat    -> Γ ⊢∞ nat
   caseNat  : ∀ {σ}   -> Γ ⊢∞ nat    -> Γ ⊢∞ σ      -> Γ ⊢∞ nat ⇒ σ        -> Γ ⊢∞ σ
   nil      : ∀ {σ}   -> Γ ⊢∞ list σ
   _::_     : ∀ {σ}   -> Γ ⊢∞ σ      -> Γ ⊢∞ list σ -> Γ ⊢∞ list σ
   caseList : ∀ {σ τ} -> Γ ⊢∞ list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
+  checkpoint : ∀ {σ} -> Bool -> Name -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
   
 data Result : Set where
   var        : Name   -> Result
   lam        : Name   -> Result -> Result
   _·_        : Result -> Result -> Result
-  Let_:=_In_ : Name -> Result -> Result -> Result
+  Let_:=_In_ : Name   -> Result -> Result -> Result
   z        : Result
   s        : Result -> Result
   caseNat  : Result -> Result -> Result -> Result
