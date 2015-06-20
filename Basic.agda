@@ -146,6 +146,9 @@ fv-all ψ  nil              = []
 fv-all ψ (x :: xs)         = fv-all ψ x ++ fv-all ψ xs
 fv-all ψ (caseList xs y g) = fv-all ψ xs ++ fv-all ψ y ++ fv-all ψ g
 
+fv : ∀ {Γ σ} -> Γ ⊢ σ -> List (Fin (lengthᶜᵒⁿ Γ))
+fv = nub ∘ fv-all stop
+
 weaken : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ σ -> Δ ⊢ σ
 weaken ψ (var v) = var (weakenᵛᵃʳ ψ v)
 weaken ψ (ƛ b)   = ƛ (weaken (keep ψ) b)

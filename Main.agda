@@ -136,7 +136,7 @@ residualize ρ (caseList xs y g) =
 residualize ρ (checkpoint seen rn t x) =
   if seen then saturate rn else (Let rn := λ-abstract (residualize ρ (♭ x)) In saturate rn)
   where
-    rs = List.map (flip lookup ρ) (nub (fv-all stop t))
+    rs = List.map (flip lookup ρ) (fv t)
     λ-abstract = λ r -> List.foldr  lam                    r      rs
     saturate   = λ n -> List.foldl (λ r n' -> r · var n') (var n) rs
 
