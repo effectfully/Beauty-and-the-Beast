@@ -148,7 +148,7 @@ and then call `build` recursively. When there are no nested `case`s, we make a c
 
 In the `build` function we make a checkpoint every time `unroll` succeeds.
 
-The `scatter` function delete all checkpoints, that do not correspond to calls to recursive functions:
+The `scatter` function deletes all checkpoints, that do not correspond to calls to recursive functions:
 
 ```
 scatter : ∀ {n Γ σ} -> Vec (Spine × Name) n -> Γ ⊢∞ σ -> List Name × Γ ⊢∞ σ
