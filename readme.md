@@ -144,7 +144,7 @@ In the `caseNat` and `caseList` cases we essentially perform this transformation
 
     case x of c -> case (case e of c' -> e') of c'' -> e''
 
-and then call `build` recursively. When there are no nested `case`s, we make a checkpoint (this is not necessary, but results in more compact code; if we would make checkpoints in the `s n` case too, then we could fold `succ · fix succ` into `fix succ` for example) and `build` all subexpressions.
+and then call `build` recursively. When there are no nested `case`s, we make a checkpoint (this is not necessary, but results in more compact resulting code; if we would make checkpoints in the `s n` case too, then we could fold `succ · fix succ` into `fix succ` for example) and `build` all subexpressions.
 
 In the `build` function we make a checkpoint every time `unroll` succeeds.
 
