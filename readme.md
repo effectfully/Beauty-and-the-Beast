@@ -88,7 +88,11 @@ revert : ∀ {Γ σ τ} -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ σ -> Δ ⊢ τ) -> 
 
 transforms an expression as follows (abusing the notation):
 
-`revert cont (case (case x of c -> e) of c' -> e')` ==> `case x of c -> cont _ (case e of c' -> e')`.
+    `revert cont (case (case x of c -> e) of c' -> e')`
+
+==>
+
+    `case x of c -> cont _ (case e of c' -> e')`.
 
 I.e. it picks the inner `case` (for any number of nested `case`s), makes it outer and applies a continuation to the remaining expression.
 
@@ -135,7 +139,9 @@ mutual
 In the `caseNat` and `caseList` cases we essentially perform this transformation:
 
   `case (case (case x of c -> e) of c' -> e') of c'' -> e''`
-==> 
+
+==>
+
   `case x of c -> case (case e of c' -> e') of c'' -> e''`
 
 and then call `build` recursively. When there are no nested cases, we make a checkpoint (this is not necessary, but results in more compact code; if we would make checkpoints in the `s n` case too, then we could fold `succ · fix succ` into `fix succ` for example) and `build` all subexpressions.
