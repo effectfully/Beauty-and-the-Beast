@@ -148,7 +148,7 @@ The `scatter` function delete all checkpoints, that do not correspond to calls t
 scatter : ∀ {n Γ σ} -> Vec (Spine × Name) n -> Γ ⊢∞ σ -> List Name × Γ ⊢∞ σ
 ```
 
-The `residualize` function transforms infinite lambda term into a finite `Result`.
+The `residualize` function transforms an infinite lambda term into a finite `Result`.
 
 ```
 residualize : ∀ {Γ σ} -> Vec Name (lengthᶜᵒⁿ Γ) -> Γ ⊢∞ σ -> Result
