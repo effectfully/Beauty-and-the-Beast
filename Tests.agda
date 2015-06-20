@@ -25,9 +25,6 @@ titerate = ƛ fix ƛ ƛ var vz :: var (vs vz) · (var (vs vs vz) · var vz)
 -- titerate : ∀ {σ} -> Term ((σ ⇒ σ) ⇒ σ ⇒ list σ)
 -- titerate = ƛ ƛ fix ƛ var (vs vz) :: tmap · var (vs vs vz) · var vz
 
-succ : Term (nat ⇒ nat)
-succ = ƛ s (var vz)
-
 undefined : ∀ {σ} -> Term σ
 undefined = fix ƛ var vz
 
@@ -66,7 +63,7 @@ tω : Term nat
 tω = fix ƛ s (var vz)
 
 tcycle : ∀ {σ} -> Term (list σ ⇒ list σ)
-tcycle = ƛ fix ƛ tapp · var (vs vz) · var vz
+tcycle = ƛ fix tapp · var vz
 
 tλω : ∀ {σ} -> Term (σ ⇒ nat)
 tλω = fix ƛ ƛ s (var (vs vz) · var vz)
@@ -133,7 +130,7 @@ sands = fix ƛ ƛ caseNat (var vz)
                   (ƛ s z)
 
 tconcat : ∀ {σ} -> Term (list (list σ) ⇒ list σ)
-tconcat = ƛ tfoldr · tapp · nil · var vz
+tconcat = tfoldr · tapp · nil
 
 tconcat-tmap-tconcat : ∀ {σ} -> Term (list (list (list σ)) ⇒ list σ)
 tconcat-tmap-tconcat = ƛ tconcat · (tmap · tconcat · var vz)
@@ -176,7 +173,7 @@ scε-tconcat-tmap-tconcat  = λ {σ}     -> scε (tconcat-tmap-tconcat {σ})
 
 open import SC.NbE
 
--- Are this two α-equal?
+-- Are these two α-equal?
 scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp   {σ} {τ})
 scε-tfoldr-tfoldr         = λ {σ τ}   -> scε (tfoldr-tfoldr {σ} {τ})
 
