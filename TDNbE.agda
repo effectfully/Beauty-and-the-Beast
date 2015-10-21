@@ -63,7 +63,7 @@ mutual
   -- Is there something like _->⁺_?
   Γ ⊨ σ ⇒ τ  = (∀ {Δ} -> Γ ⊆ Δ -> Δ ⊨ σ -> Δ ⊨ τ) ⊎ Γ ⊢ⁿᵉ σ ⇒ τ
 
-  Listᵐ : Con -> Type -> Set
+  Listᵐ : Links
   Listᵐ Γ σ = List⁺ (Γ ⊨ σ) (Γ ⊢ⁿᵉ list σ)
 
 mutual
