@@ -1,166 +1,182 @@
 module SC.Tests where
 
 open import SC.Basic
-open import SC.Main
+open import SC.Jigger
+open import SC.SC
 
 tmap : ∀ {σ τ} -> Term ((σ ⇒ τ) ⇒ list σ ⇒ list τ)
-tmap = ƛ fix ƛ ƛ caseList (var vz)
-                    nil
-                   (ƛ ƛ var (vs vs vs vs vz) · var (vs vz) :: var (vs vs vs vz) · var vz)
+tmap = 1 # λ f → fix 2 # λ r xs → caseList xs
+                            nil
+                           (2 # λ x xs' → f · x :: r · xs')
 
 tmap-tmap : ∀ {σ τ ν} -> Term ((τ ⇒ ν) ⇒ (σ ⇒ τ) ⇒ list σ ⇒ list ν)
-tmap-tmap = ƛ ƛ ƛ tmap · var (vs vs vz) · (tmap · var (vs vz) · var vz)
+tmap-tmap = 3 # λ g f xs → tmap · g · (tmap · f · xs)
 
 tapp : ∀ {σ} -> Term (list σ ⇒ list σ ⇒ list σ)
-tapp = fix ƛ ƛ ƛ caseList (var (vs vz))
-                   (var vz)
-                   (ƛ ƛ var (vs vz) :: var (vs vs vs vs vz) · var vz · var (vs vs vz))
+tapp = fix 3 # λ r xs ys → caseList xs
+                  ys
+                 (2 # λ x xs' → x :: r · xs' · ys)
 
 tapp-tapp : ∀ {σ} -> Term (list σ ⇒ list σ ⇒ list σ ⇒ list σ)
-tapp-tapp = ƛ ƛ ƛ tapp · (tapp · var (vs vs vz) · var (vs vz)) · var vz
+tapp-tapp = 3 # λ xs ys zs → tapp · (tapp · xs · ys) · zs
+
+-- Should this be a constructor instead?
+undefined : ∀ {σ} -> Term σ
+undefined = fix 1 # λ x → x
 
 titerate : ∀ {σ} -> Term ((σ ⇒ σ) ⇒ σ ⇒ list σ)
-titerate = ƛ fix ƛ ƛ var vz :: var (vs vz) · (var (vs vs vz) · var vz)
-
--- titerate : ∀ {σ} -> Term ((σ ⇒ σ) ⇒ σ ⇒ list σ)
--- titerate = ƛ ƛ fix ƛ var (vs vz) :: tmap · var (vs vs vz) · var vz
-
-undefined : ∀ {σ} -> Term σ
-undefined = fix ƛ var vz
+titerate = 1 # λ f → fix 2 # λ r x -> x :: r · (f · x)
 
 tlookup : ∀ {σ} -> Term (nat ⇒ list σ ⇒ σ)
-tlookup = fix ƛ ƛ ƛ caseList (var vz)
-                       undefined
-                      (ƛ ƛ caseNat (var (vs vs vs vz))
-                             (var (vs vz))
-                             (ƛ var (vs vs vs vs vs vz) · var vz · var (vs vz)))
+tlookup = fix 3 # λ r n xs → caseList xs
+                     undefined
+                    (2 # λ x xs' → caseNat n
+                            x
+                           (1 # λ n' → r · n' · xs'))
+module _ where                           
+-- abstract
+  bool = nat
 
-tcontains-z : Term (list nat ⇒ nat)
-tcontains-z = fix ƛ ƛ caseList (var vz)
-                         z
-                        (ƛ ƛ caseNat (var (vs vz))
-                               (s z)
-                               (ƛ var (vs vs vs vs vz) · var (vs vz)))
+  tfalse : Term bool
+  tfalse = z
 
-tcontains-z-tapp : Term (list nat ⇒ nat)
-tcontains-z-tapp = ƛ tcontains-z · (tapp · var vz · (z :: nil))
+  ttrue : Term bool
+  ttrue = s z
 
-tcontains-z-tapp-tapp : Term (list nat ⇒ list nat ⇒ nat)
-tcontains-z-tapp-tapp = ƛ ƛ tcontains-z · (tapp · var (vs vz) · (tapp · (z :: nil) · var vz))
+  tif : ∀ {σ} -> Term (bool ⇒ σ ⇒ σ ⇒ σ)
+  tif = 3 # λ b x y → caseNat b x (1 # λ _ → y)
+
+test-bool : Term (bool ⇒ nat)
+test-bool = 1 # λ b → tif · b · z · s z
+
+tcontains-z : Term (list nat ⇒ bool)
+tcontains-z = fix 2 # λ r ns → caseList ns
+                         tfalse
+                        (2 # λ n ns' → caseNat n
+                                ttrue
+                               (1 # λ _ → r · ns'))
+
+tcontains-z-tapp : Term (list nat ⇒ bool)
+tcontains-z-tapp = 1 # λ ns → tcontains-z · (tapp · ns · (z :: nil))
+
+tcontains-z-tapp-tapp : Term (list nat ⇒ list nat ⇒ bool)
+tcontains-z-tapp-tapp = 2 # λ ns ms → tcontains-z · (tapp · ns · (tapp · (z :: nil) · ms))
 
 tzeros : Term (list nat)
-tzeros = fix ƛ z :: var vz
+tzeros = fix 1 # λ ns → z :: ns
 
 tlookup-tzeros : Term (nat ⇒ nat)
-tlookup-tzeros = ƛ tlookup · (var vz) · tzeros
+tlookup-tzeros = 1 # λ n → tlookup · n · tzeros
 
-teq : Term (nat ⇒ nat ⇒ nat)
-teq = fix ƛ ƛ ƛ caseNat (var (vs vz))
-                  (caseNat (var vz) (s z) (ƛ z))
-                  (caseNat (var vz) (ƛ z) (ƛ ƛ var (vs vs vs vs vz) · var (vs vz) · var vz))
+teq : Term (nat ⇒ nat ⇒ bool)
+teq = fix 3 # λ r n m → caseNat n
+                (caseNat m  ttrue             (1 # λ _ → tfalse))
+                (caseNat m (1 # λ _ → tfalse) (2 # λ n' m' → r · n' · m'))
 
 tω : Term nat
-tω = fix ƛ s (var vz)
+tω = fix 1 # λ ω → s ω
 
 tcycle : ∀ {σ} -> Term (list σ ⇒ list σ)
-tcycle = ƛ fix tapp · var vz
+tcycle = 1 # λ xs → fix (tapp · xs)
 
 tλω : ∀ {σ} -> Term (σ ⇒ nat)
-tλω = fix ƛ ƛ s (var (vs vz) · var vz)
+tλω = fix 2 # λ r n → s (r · n)
 
 tfoldr : ∀ {σ τ} -> Term ((σ ⇒ τ ⇒ τ) ⇒ τ ⇒ list σ ⇒ τ)
-tfoldr = ƛ ƛ fix ƛ ƛ caseList (var vz)
-                       (var (vs vs vz))
-                       (ƛ ƛ var (vs vs vs vs vs vz) · var (vs vz) · (var (vs vs vs vz) · var vz))
+tfoldr = 2 # λ f z → fix 2 # λ r xs → caseList xs
+                                z
+                               (2 # λ x xs' → f · x · (r · xs'))
 
 tmap' : ∀ {σ τ} -> Term ((σ ⇒ τ) ⇒ list σ ⇒ list τ)
-tmap' = ƛ ƛ tfoldr · (ƛ ƛ var (vs vs vs vz) · var (vs vz) :: var vz) · nil · var vz
+tmap' = 1 # λ f → tfoldr · (2 # λ x rs → f · x :: rs) · nil
 
 tmap'-tmap' : ∀ {σ τ ν} -> Term ((τ ⇒ ν) ⇒ (σ ⇒ τ) ⇒ list σ ⇒ list ν)
-tmap'-tmap' = ƛ ƛ ƛ tmap' · var (vs vs vz) · (tmap' · var (vs vz) · var vz)
+tmap'-tmap' = 3 # λ g f xs → tmap' · g · (tmap' · f · xs)
 
 tfoldr-tapp : ∀ {σ τ} -> Term ((σ ⇒ τ ⇒ τ) ⇒ τ ⇒ list σ ⇒ list σ ⇒ τ)
-tfoldr-tapp = ƛ ƛ ƛ ƛ tfoldr · var (vs vs vs vz) · var (vs vs vz) · (tapp · var (vs vz) · var vz)
+tfoldr-tapp = 4 # λ f z xs ys → tfoldr · f · z · (tapp · xs · ys)
 
 tfoldr-tfoldr : ∀ {σ τ} -> Term ((σ ⇒ τ ⇒ τ) ⇒ τ ⇒ list σ ⇒ list σ ⇒ τ)
-tfoldr-tfoldr = ƛ ƛ ƛ ƛ tfoldr · var (vs vs vs vz)
-                               · (tfoldr · var (vs vs vs vz) · var (vs vs vz) · var vz)
-                               · var (vs vz)
+tfoldr-tfoldr = 4 # λ f z xs ys → tfoldr · f · (tfoldr · f · z · ys) · xs
 
 tdouble : Term (nat ⇒ nat)
-tdouble = fix ƛ ƛ caseNat (var vz)
+tdouble = fix 2 # λ r n → caseNat n
                      z
-                    (ƛ s (s (var (vs vs vz) · var vz)))
+                    (1 # λ n' → s (s (r · n')))
 
-teven : Term (nat ⇒ nat)
-teven = fix ƛ ƛ caseNat (var vz)
-                  (s z)
-                  (ƛ caseNat (var vz)
-                        z
-                       (ƛ var (vs vs vs vz) · var vz))
+teven : Term (nat ⇒ bool)
+teven = fix 2 # λ r n → caseNat n
+                   ttrue
+                  (1 # λ n' → caseNat n'
+                          tfalse
+                         (1 # λ n'' → r · n''))
 
-teven-tdouble : Term (nat ⇒ nat)
-teven-tdouble = ƛ teven · (tdouble · var vz)
+teven-tdouble : Term (nat ⇒ bool)
+teven-tdouble = 1 # λ n → teven · (tdouble · n)
 
 tplus : Term (nat ⇒ nat ⇒ nat)
-tplus = fix ƛ ƛ ƛ caseNat (var (vs vz))
-                    (var vz)
-                    (ƛ s (var (vs vs vs vz) · var vz · var (vs vz)))
+tplus = fix 3 # λ r n m → caseNat n
+                   m
+                  (1 # λ n' → s (r · n' · m))
 
 tdouble-tplus : Term (nat ⇒ nat ⇒ nat)
-tdouble-tplus = ƛ ƛ tdouble · (tplus · var (vs vz) · var vz)
+tdouble-tplus = 2 # λ n m → tdouble · (tplus · n · m)
 
 tplus-tdouble : Term (nat ⇒ nat ⇒ nat)
-tplus-tdouble = ƛ ƛ tplus · (tdouble · var (vs vz)) · (tdouble · var vz)
+tplus-tdouble = 2 # λ n m → tplus · (tdouble · n) · (tdouble · m)
 
 tmult : Term (nat ⇒ nat ⇒ nat)
-tmult = fix ƛ ƛ ƛ caseNat (var (vs vz))
-                     z
-                    (ƛ tplus · var (vs vz) · (var (vs vs vs vz) · var vz · var (vs vz)))
+tmult = fix 3 # λ r n m → caseNat n
+                   z
+                  (1 # λ n' → tplus · m · (r · n' · m))
 
 tmult-tmult : Term (nat ⇒ nat ⇒ nat ⇒ nat)
-tmult-tmult = ƛ ƛ ƛ tmult · (tmult · var (vs vs vz) · var (vs vz)) · var vz
+tmult-tmult = 3 # λ n m p → tmult · (tmult · n · m) · p
 
 tmap-titerate : ∀ {σ} -> Term ((σ ⇒ σ) ⇒ σ ⇒ list σ)
-tmap-titerate = ƛ ƛ tmap · var (vs vz) · (titerate · var (vs vz) · var vz)
+tmap-titerate = 2 # λ f x → tmap · f · (titerate · f · x)
 
 sands : Term (nat ⇒ nat)
-sands = fix ƛ ƛ caseNat (var vz)
-                  (var (vs vz) · var vz)
-                  (ƛ s z)
+sands = fix 2 # λ r n → caseNat n
+                  (r · n)
+                  (1 # λ _ → s z)
 
 tconcat : ∀ {σ} -> Term (list (list σ) ⇒ list σ)
 tconcat = tfoldr · tapp · nil
 
 tconcat-tmap-tconcat : ∀ {σ} -> Term (list (list (list σ)) ⇒ list σ)
-tconcat-tmap-tconcat = ƛ tconcat · (tmap · tconcat · var vz)
+tconcat-tmap-tconcat = 1 # λ xs → tconcat · (tmap · tconcat · xs)
 
 id-nat : Term (nat ⇒ nat)
-id-nat = fix ƛ ƛ caseNat (var vz)
+id-nat = fix 2 # λ r n → caseNat n
                     z
-                   (ƛ s (var (vs vs vz) · var vz))
+                   (1 # λ n' → s (r · n'))
 
 id-nat-id-nat : Term (nat ⇒ nat)
-id-nat-id-nat = ƛ id-nat · (id-nat · var vz)
+id-nat-id-nat = 1 # λ n → id-nat · (id-nat · n)
 
 caseNat-undefined : Term nat
-caseNat-undefined = caseNat undefined z (ƛ z)
+caseNat-undefined = caseNat undefined z (1 # λ _ → z)
+
+σ = nat
+τ = nat
+ν = nat
 
 -- Seem ok.
-scε-tmap-tmap             = λ {σ τ ν} -> scε (tmap-tmap {σ} {τ} {ν})
-scε-tmap'-tmap'           = λ {σ τ ν} -> scε (tmap'-tmap' {σ} {τ} {ν})           
-scε-tapp-tapp             = λ {σ}     -> scε (tapp-tapp {σ})
+scε-tmap-tmap             = {-λ {σ τ ν} ->-} scε (tmap-tmap {σ} {τ} {ν})
+scε-tmap'-tmap'           = {-λ {σ τ ν} ->-} scε (tmap'-tmap' {σ} {τ} {ν})           
+scε-tapp-tapp             = {-λ {σ}     ->-} scε (tapp-tapp {σ})
 scε-tcontains-z-tapp      =              scε  tcontains-z-tapp
 scε-tcontains-z-tapp-tapp =              scε  tcontains-z-tapp-tapp
 scε-teq-tω-tω             =              scε (teq · tω · tω)
 scε-s-tω                  =              scε (s tω) -- Needs folding.
-scε-tλω-·                 = λ {σ}     -> scε (tλω {σ} · undefined)
+scε-tλω-·                 = {-λ {σ}     ->-} scε (tλω {σ} · undefined)
 scε-id-nat-id-nat         =              scε  id-nat-id-nat
 scε-caseNat-undefined     =              scε  caseNat-undefined -- (case ⊥ of ...) ==> ⊥
-
--- Not sure.
 scε-tdouble-tplus         =              scε  tdouble-tplus
 scε-tplus-tdouble         =              scε  tplus-tdouble
+
+-- Not sure.
 scε-tcycle-cons           =              scε (z :: tcycle · (s z :: z :: nil))
 scε-tlookup-tzeros        =              scε  tlookup-tzeros
 scε-teven-tdouble         =              scε  teven-tdouble
@@ -168,14 +184,12 @@ scε-teven-tdouble         =              scε  teven-tdouble
 -- sc-sands-·                =              sc {ε ▻ nat} (sands · var vz)
 
 -- Do not terminate.
-scε-tmap-titerate         = λ {σ}     -> scε (tmap-titerate {σ})
-scε-tconcat-tmap-tconcat  = λ {σ}     -> scε (tconcat-tmap-tconcat {σ})
-
-open import SC.NbE
+scε-tmap-titerate         = {-λ {σ}     ->-} scε (tmap-titerate {σ})
+scε-tconcat-tmap-tconcat  = {-λ {σ}     ->-} scε (tconcat-tmap-tconcat {σ})
 
 -- Are these two α-equal?
-scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp   {σ} {τ})
-scε-tfoldr-tfoldr         = λ {σ τ}   -> scε (tfoldr-tfoldr {σ} {τ})
+scε-tfoldr-tapp           = {-λ {σ τ}   ->-} scε (tfoldr-tapp   {σ} {τ})
+scε-tfoldr-tfoldr         = {-λ {σ τ}   ->-} scε (tfoldr-tfoldr {σ} {τ})
 
 -- lam "x0"
 -- (lam "x1"
