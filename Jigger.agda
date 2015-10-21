@@ -29,9 +29,9 @@ fishy-chips : ∀ Γ Δ -> ε <>< (Δ <>> Γ) ≡ Δ <>< Γ
 fishy-chips Γ  ε      = refl
 fishy-chips Γ (Δ ▻ τ) = fishy-chips (Γ ▻ τ) Δ
 
-lem : ∀ {Ξ} Γ Δ -> Δ <>> ε ≡ Γ <>> Ξ -> Γ <>< Ξ ≡ Δ
-lem  ε      Δ refl = fishy-chips ε Δ
-lem (Γ ▻ σ) Δ p    = lem Γ Δ p
+lem : ∀ {Ξ Δ} Γ -> Δ <>> ε ≡ Γ <>> Ξ -> Γ <>< Ξ ≡ Δ
+lem  ε      refl = fishy-chips ε _
+lem (Γ ▻ σ) p    = lem Γ p
 
 CoN : ℕ -> Set
 CoN  0      = ⊤
@@ -41,13 +41,10 @@ _⇒ⁿ_ : ∀ {n} -> CoN n -> Type -> Type
 _⇒ⁿ_ {0}      _      τ = τ
 _⇒ⁿ_ {suc n} (σ , Γ) τ = σ ⇒ Γ ⇒ⁿ τ
 
-Bound : Con -> Type -> Type -> Set
-Bound Γ σ τ = ∀ {Δ Ξ} {{_ : Δ <>> ε ≡ Γ <>> (Ξ ▻ σ)}} -> Δ ⊢ σ
-
 Bind : ∀ {n} -> Con -> CoN n -> Type -> Set
 Bind {0}     Γ  _      σ = Γ ⊢ σ
-Bind {suc n} Γ (τ , Δ) σ = Bound Γ τ σ -> Bind (Γ ▻ τ) Δ σ
+Bind {suc n} Γ (τ , Δ) σ = (∀ {Δ Ξ} {{_ : Δ <>> ε ≡ Γ <>> (Ξ ▻ τ)}} -> Δ ⊢ τ) -> Bind (Γ ▻ τ) Δ σ
 
 _#_ : ∀ n {Γ} {Δ : CoN n} {σ} -> Bind Γ Δ σ -> Γ ⊢ Δ ⇒ⁿ σ
 _#_  0                  b = b
-_#_ (suc n) {Γ} {τ , Δ} b = ƛ (n # b λ {Δ' Ξ} {{p}} -> subst (_⊢ τ) (lem Γ Δ' p) (var (weak Ξ vz)))
+_#_ (suc n) {Γ} {τ , Δ} b = ƛ (n # b λ {Δ' Ξ} {{p}} -> subst (_⊢ τ) (lem Γ p) (var (weak Ξ vz)))
