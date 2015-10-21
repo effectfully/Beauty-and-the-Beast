@@ -108,8 +108,8 @@ mutual
   revert n c | before         with c
   ... | natᶜ  y g = caseNatⁱ  (buildᵘⁿᵉ n) (buildⁿᶠ y) (buildⁿᶠ g)
   ... | listᶜ y g = caseListⁱ (buildᵘⁿᵉ n) (buildⁿᶠ y) (buildⁿᶠ g)
-  revert n c | now {τ} e fill with λ {Δ} (ι : _ ⊆ Δ) -> build ∘ fill ι
-  ... | go with τ
+  revert n c | now {σ} e fill with λ {Δ} (ι : _ ⊆ Δ) -> build ∘ fill ι
+  ... | go with σ
   ... | bnat    = caseNatⁱ  (buildᵘⁿᵉ e)
                             (go stop z)
                             (ƛⁱ (go (skip stop) (s (var vz))))

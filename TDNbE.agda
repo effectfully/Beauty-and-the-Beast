@@ -56,7 +56,7 @@ mutual
   renⁿᶠ ι (x ::ⁿᶠ xs) = renⁿᶠ ι x ::ⁿᶠ renⁿᶠ ι xs
 
 mutual
-  _⊨_ : Con -> Type -> Set
+  _⊨_ : Links
   -- (ℕ⁺ (Γ ⊢ⁿᵉ nat)) should work as well.
   Γ ⊨ nat    = Γ ⊢ⁿᶠ nat
   Γ ⊨ list σ = Listᵐ Γ σ
@@ -88,14 +88,14 @@ varᵐ = neᵐ ∘ varⁿᵉ
 mutual
   readback : _⊨_ ∸> _⊢ⁿᶠ_
   readback {nat}     n       = n
-  readback {list σ}  xs      = readbacks xs
+  readback {list σ}  xs      = readbackList xs
   readback {σ ⇒ τ}  (inj₁ k) = ƛⁿᶠ (readback (k top (varᵐ vz)))
   readback {σ ⇒ τ}  (inj₂ n) = neⁿᶠ n
 
-  readbacks : ∀ {σ Γ} -> Listᵐ Γ σ -> Γ ⊢ⁿᶠ list σ
-  readbacks (list⁺ xs) = neⁿᶠ xs
-  readbacks  []⁺       = nilⁿᶠ
-  readbacks (x ∷⁺ xs)  = readback x ::ⁿᶠ readbacks xs
+  readbackList : ∀ {σ Γ} -> Listᵐ Γ σ -> Γ ⊢ⁿᶠ list σ
+  readbackList (list⁺ xs) = neⁿᶠ xs
+  readbackList  []⁺       = nilⁿᶠ
+  readbackList (x ∷⁺ xs)  = readback x ::ⁿᶠ readbackList xs
 
 zᵐ : ∀ {Γ} -> Γ ⊨ nat
 zᵐ = zⁿᶠ

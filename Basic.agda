@@ -61,6 +61,10 @@ _∋_ = flip _∈_
 Term : Type -> Set
 Term σ = ∀ {Γ} -> Γ ⊢ σ
 
+lenᶜ : Con -> ℕ
+lenᶜ  ε      = 0
+lenᶜ (Γ ▻ σ) = suc (lenᶜ Γ)
+
 top : ∀ {Γ σ} -> Γ ⊆ Γ ▻ σ
 top = skip stop
 
@@ -70,10 +74,6 @@ skip κ ∘ˢ ι      = skip (κ ∘ˢ ι)
 keep κ ∘ˢ stop   = keep κ
 keep κ ∘ˢ skip ι = skip (κ ∘ˢ ι)
 keep κ ∘ˢ keep ι = keep (κ ∘ˢ ι)
-
-lenᶜ : Con -> ℕ
-lenᶜ  ε      = 0
-lenᶜ (Γ ▻ σ) = suc (lenᶜ Γ)
 
 ∈-to-Fin : ∀ {Γ σ} -> σ ∈ Γ -> Fin (lenᶜ Γ)
 ∈-to-Fin  vz    = zero
