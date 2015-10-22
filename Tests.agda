@@ -158,19 +158,15 @@ id-nat-id-nat = 1 # λ n → id-nat · (id-nat · n)
 caseNat-undefined : Term nat
 caseNat-undefined = caseNat undefined z (1 # λ _ → z)
 
-σ = nat
-τ = nat
-ν = nat
-
 -- Seem ok.
-scε-tmap-tmap             = {-λ {σ τ ν} ->-} scε (tmap-tmap {σ} {τ} {ν})
-scε-tmap'-tmap'           = {-λ {σ τ ν} ->-} scε (tmap'-tmap' {σ} {τ} {ν})           
-scε-tapp-tapp             = {-λ {σ}     ->-} scε (tapp-tapp {σ})
+scε-tmap-tmap             = λ {σ τ ν} -> scε (tmap-tmap {σ} {τ} {ν})
+scε-tmap'-tmap'           = λ {σ τ ν} -> scε (tmap'-tmap' {σ} {τ} {ν})           
+scε-tapp-tapp             = λ {σ}     -> scε (tapp-tapp {σ})
 scε-tcontains-z-tapp      =              scε  tcontains-z-tapp
 scε-tcontains-z-tapp-tapp =              scε  tcontains-z-tapp-tapp
 scε-teq-tω-tω             =              scε (teq · tω · tω)
 scε-s-tω                  =              scε (s tω) -- Needs folding.
-scε-tλω-·                 = {-λ {σ}     ->-} scε (tλω {σ} · undefined)
+scε-tλω-·                 = λ {σ}     -> scε (tλω {σ} · undefined)
 scε-id-nat-id-nat         =              scε  id-nat-id-nat
 scε-caseNat-undefined     =              scε  caseNat-undefined -- (case ⊥ of ...) ==> ⊥
 scε-tdouble-tplus         =              scε  tdouble-tplus
@@ -184,62 +180,9 @@ scε-teven-tdouble         =              scε  teven-tdouble
 -- sc-sands-·                =              sc {ε ▻ nat} (sands · var vz)
 
 -- Do not terminate.
-scε-tmap-titerate         = {-λ {σ}     ->-} scε (tmap-titerate {σ})
-scε-tconcat-tmap-tconcat  = {-λ {σ}     ->-} scε (tconcat-tmap-tconcat {σ})
+scε-tmap-titerate         = λ {σ}     -> scε (tmap-titerate {σ})
+scε-tconcat-tmap-tconcat  = λ {σ}     -> scε (tconcat-tmap-tconcat {σ})
 
 -- Are these two α-equal?
-scε-tfoldr-tapp           = {-λ {σ τ}   ->-} scε (tfoldr-tapp   {σ} {τ})
-scε-tfoldr-tfoldr         = {-λ {σ τ}   ->-} scε (tfoldr-tfoldr {σ} {τ})
-
--- lam "x0"
--- (lam "x1"
---  (lam "x2"
---   (lam "x3"
---    (Let "r0" :=
---     lam "x1"
---     (lam "x0"
---      (lam "x3"
---       (lam "x2"
---        (caseList (var "x2")
---         (Let "r2" :=
---          lam "x1"
---          (lam "x0"
---           (lam "x3"
---            (caseList (var "x3") (var "x1")
---             (lam "x4"
---              (lam "x5"
---               (var "x0" · var "x4" ·
---                (var "r2" · var "x1" · var "x0" · var "x5")))))))
---          In (var "r2" · var "x1" · var "x0" · var "x3"))
---         (lam "x4"
---          (lam "x5"
---           (var "x0" · var "x4" ·
---            (var "r0" · var "x1" · var "x0" · var "x3" · var "x5"))))))))
---     In (var "r0" · var "x1" · var "x0" · var "x3" · var "x2")))))
-
--- λ {σ} {τ} →
---   lam "x0"
---   (lam "x1"
---    (lam "x2"
---     (lam "x3"
---      (Let "r0" :=
---       lam "x1"
---       (lam "x0"
---        (lam "x2"
---         (lam "x3"
---          (caseList (var "x2")
---           (Let "r3" :=
---            lam "x3"
---            (lam "x1"
---             (lam "x0"
---              (caseList (var "x3") (var "x1")
---               (lam "x4"
---                (lam "x5"
---                 (var "x0" · var "x4" ·
---                  (var "r3" · var "x5" · var "x1" · var "x0")))))))
---            In (var "r3" · var "x3" · var "x1" · var "x0"))
---           (lam "x4"
---            (lam "x5"
---             (var "x0" · var "x4" ·
---              (var "r0" · var "x1" · var "x0" · var "x5" · var "x3"))))))))
---       In (var "r0" · var "x1" · var "x0" · var "x2" · var "x3")))))
+scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp   {σ} {τ})
+scε-tfoldr-tfoldr         = λ {σ τ}   -> scε (tfoldr-tfoldr {σ} {τ})

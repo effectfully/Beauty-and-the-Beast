@@ -2,70 +2,88 @@ module SC.Semantics where
 
 open import SC.Basic
 
-record EnvKit : Set₁ where
-  infix 4 _∙_
+-- Forgive me this.
+record Kripkable : Set₁ where
+  infix  4 _∙_
+  infixr 9 _∘ᵏ_
 
   field
     _∙_  : Links
-    varᵏ : _∋_ ∸> _∙_
-    renᵏ : Renames _∙_
+    varˢ : _∋_ ∸> _∙_
 
-record SemKit (envKit : EnvKit) : Set₁ where
-  open EnvKit envKit
+  Kripke : Con -> Type -> Type -> Set
+  Kripke Γ σ τ = ∀ {Δ} -> Γ ⊆ Δ -> Δ ∙ σ -> Δ ∙ τ
 
-  infix  4 _◆_
-  infixl 6 _·ˢ_
-  infixr 5 _::ˢ_
+  runᵏ : ∀ {Γ σ τ} -> Kripke Γ σ τ -> Γ ▻ σ ∙ τ
+  runᵏ k = k top (varˢ vz)
 
-  field
-    _◆_  : Links
-    embˢ : _∙_ ∸> _◆_
-    lamˢ : ∀ {Γ σ τ} -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ∙ σ -> Δ ◆ τ) -> Γ ◆ σ ⇒ τ
-    _·ˢ_ : ∀ {Γ σ τ} -> Γ ◆ σ ⇒ τ -> Γ ◆ σ -> Γ ◆ τ
-    fixˢ : ∀ {Γ σ}   -> Γ ◆ σ ⇒ σ -> Γ ◆ σ
-    zˢ        : ∀ {Γ}     -> Γ ◆ nat
-    sˢ        : ∀ {Γ}     -> Γ ◆ nat    -> Γ ◆ nat
-    caseNatˢ  : ∀ {Γ σ}   -> Γ ◆ nat    -> Γ ◆ σ      -> Γ ◆ nat ⇒ σ        -> Γ ◆ σ
-    nilˢ      : ∀ {Γ σ}   -> Γ ◆ list σ
-    _::ˢ_     : ∀ {Γ σ}   -> Γ ◆ σ      -> Γ ◆ list σ -> Γ ◆ list σ
-    caseListˢ : ∀ {Γ σ τ} -> Γ ◆ list σ -> Γ ◆ τ      -> Γ ◆ σ ⇒ list σ ⇒ τ -> Γ ◆ τ
+  _·ᵏ_ : ∀ {Γ σ τ} -> Kripke Γ σ τ -> Γ ∙ σ -> Γ ∙ τ
+  k ·ᵏ t = k stop t
 
-module Environment (envKit : EnvKit) where
-  open EnvKit envKit public
+  renᵏ : ∀ {Γ Δ σ τ} -> Γ ⊆ Δ -> Kripke Γ σ τ -> Kripke Δ σ τ
+  renᵏ ι k κ = k (κ ∘ˢ ι)
 
-  infix 4 _↦_
+  _∘ᵏ_ : ∀ {Γ σ τ ν} -> Kripke Γ τ ν -> Kripke Γ σ τ -> Kripke Γ σ ν
+  (k₂ ∘ᵏ k₁) ι = k₂ ι ∘ k₁ ι
 
-  data _↦_ : Con -> Con -> Set where
-    Ø   : ∀ {Δ} -> ε ↦ Δ
-    _▷_ : ∀ {Γ Δ σ} -> Γ ↦ Δ -> Δ ∙ σ -> Γ ▻ σ ↦ Δ
+  record Environment : Set where
+    infix 4 _⊢*_
 
-  lookupᵉ : ∀ {Γ Δ σ} -> σ ∈ Γ -> Γ ↦ Δ -> Δ ∙ σ
-  lookupᵉ  vz    (ρ ▷ x) = x
-  lookupᵉ (vs v) (ρ ▷ x) = lookupᵉ v ρ
+    field
+      renˢ : Renames _∙_
 
-  renᵉ : ∀ {Γ Δ Ξ} -> Δ ⊆ Ξ -> Γ ↦ Δ -> Γ ↦ Ξ
-  renᵉ ι  Ø      = Ø
-  renᵉ ι (ρ ▷ x) = renᵉ ι ρ ▷ renᵏ ι x
+    data _⊢*_ Δ : Con -> Set where
+      Ø   : Δ ⊢* ε
+      _▷_ : ∀ {Γ σ} -> Δ ⊢* Γ -> Δ ∙ σ -> Δ ⊢* Γ ▻ σ
 
-  idᵉ : ∀ {Γ} -> Γ ↦ Γ
-  idᵉ {ε}     = Ø
-  idᵉ {Γ ▻ σ} = renᵉ top idᵉ ▷ varᵏ vz
+    lookupᵉ : ∀ {Γ Δ σ} -> σ ∈ Γ -> Δ ⊢* Γ -> Δ ∙ σ
+    lookupᵉ  vz    (ρ ▷ t) = t
+    lookupᵉ (vs v) (ρ ▷ t) = lookupᵉ v ρ
 
-module Semantics {envKit} (semKit : SemKit envKit) where
-  open SemKit semKit      public
-  open Environment envKit public
+    renᵉ : ∀ {Γ Δ Ξ} -> Δ ⊆ Ξ -> Δ ⊢* Γ -> Ξ ⊢* Γ
+    renᵉ ι  Ø      = Ø
+    renᵉ ι (ρ ▷ t) = renᵉ ι ρ ▷ renˢ ι t
 
-  ⟦_⟧ : ∀ {Γ Δ σ} -> Γ ⊢ σ -> Γ ↦ Δ -> Δ ◆ σ
-  ⟦ var v ⟧ ρ = embˢ (lookupᵉ v ρ)
-  ⟦ ƛ b   ⟧ ρ = lamˢ (λ ι x -> ⟦ b ⟧ (renᵉ ι ρ ▷ x))
-  ⟦ f · x ⟧ ρ = ⟦ f ⟧ ρ ·ˢ ⟦ x ⟧ ρ
-  ⟦ fix f ⟧ ρ = fixˢ (⟦ f ⟧ ρ)
-  ⟦ z               ⟧ ρ = zˢ
-  ⟦ s n             ⟧ ρ = sˢ (⟦ n ⟧ ρ)
-  ⟦ caseNat  n  y g ⟧ ρ = caseNatˢ  (⟦ n  ⟧ ρ) (⟦ y ⟧ ρ) (⟦ g ⟧ ρ)
-  ⟦ nil             ⟧ ρ = nilˢ
-  ⟦ x :: xs         ⟧ ρ = ⟦ x ⟧ ρ ::ˢ ⟦ xs ⟧ ρ
-  ⟦ caseList xs y g ⟧ ρ = caseListˢ (⟦ xs ⟧ ρ) (⟦ y ⟧ ρ) (⟦ g ⟧ ρ)
+    keepᵉ : ∀ {Δ Γ σ} -> Δ ⊢* Γ -> Δ ▻ σ ⊢* Γ ▻ σ
+    keepᵉ ρ = renᵉ top ρ ▷ varˢ vz
 
-  eval : _⊢_ ∸> _◆_
-  eval t = ⟦ t ⟧ idᵉ
+    idᵉ : ∀ {Γ} -> Γ ⊢* Γ
+    idᵉ {ε}     = Ø
+    idᵉ {Γ ▻ σ} = keepᵉ idᵉ
+
+    record Semantics : Set₁ where
+      infix  4 _◆_
+      infixl 6 _·ˢ_
+      infixr 5 _::ˢ_
+
+      field
+        _◆_  : Links
+        embˢ : _∙_ ∸> _◆_
+        lamˢ : ∀ {Γ σ τ} -> (∀ {Δ} -> Γ ⊆ Δ -> Δ ∙ σ -> Δ ◆ τ) -> Γ ◆ σ ⇒ τ
+
+      open Constructors _◆_
+
+      field
+        _·ˢ_ : App
+        fixˢ : Fix
+        zˢ        : Z
+        sˢ        : S
+        caseNatˢ  : CaseNat
+        nilˢ      : Nil
+        _::ˢ_     : Cons
+        caseListˢ : CaseList
+
+      ⟦_⟧ : ∀ {Δ Γ σ} -> Γ ⊢ σ -> Δ ⊢* Γ -> Δ ◆ σ
+      ⟦ var v ⟧ ρ = embˢ (lookupᵉ v ρ)
+      ⟦ ƛ b   ⟧ ρ = lamˢ λ ι x -> ⟦ b ⟧ (renᵉ ι ρ ▷ x)
+      ⟦ f · x ⟧ ρ = ⟦ f ⟧ ρ ·ˢ ⟦ x ⟧ ρ
+      ⟦ fix f ⟧ ρ = fixˢ (⟦ f ⟧ ρ)
+      ⟦ z               ⟧ ρ = zˢ
+      ⟦ s n             ⟧ ρ = sˢ (⟦ n ⟧ ρ)
+      ⟦ caseNat  n  y g ⟧ ρ = caseNatˢ  (⟦ n  ⟧ ρ) (⟦ y ⟧ ρ) (⟦ g ⟧ ρ)
+      ⟦ nil             ⟧ ρ = nilˢ
+      ⟦ x :: xs         ⟧ ρ = ⟦ x ⟧ ρ ::ˢ ⟦ xs ⟧ ρ
+      ⟦ caseList xs y g ⟧ ρ = caseListˢ (⟦ xs ⟧ ρ) (⟦ y ⟧ ρ) (⟦ g ⟧ ρ)
+
+      eval : _⊢_ ∸> _◆_
+      eval t = ⟦ t ⟧ idᵉ

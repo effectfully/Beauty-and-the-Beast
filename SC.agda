@@ -1,7 +1,6 @@
 module SC.SC where
 
 open import SC.Basic
-open import SC.TDNbE
 open import SC.Build
 
 open import Data.String.Base as Name renaming (String to Name) hiding (toList; show)

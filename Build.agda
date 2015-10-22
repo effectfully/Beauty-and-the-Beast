@@ -1,9 +1,11 @@
 module SC.Build where
 
 open import SC.Basic
-open import SC.TDNbE
+open import SC.NF
+open import SC.Semantics
+open import SC.NbE
 
-infix  4 _⊢ᵘⁿᵉ_
+infix 4 _⊢ᵘⁿᵉ_
 
 module Infinite Tag where
   infix  4 _⊢∞_
@@ -11,26 +13,34 @@ module Infinite Tag where
   infixl 6 _·ⁱ_
   infixr 5 _::ⁱ_
 
-  data _⊢∞_ Γ : Type -> Set where
-    varⁱ : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
-    ƛⁱ_  : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
-    _·ⁱ_ : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
-    zⁱ        :            Γ ⊢∞ nat
-    sⁱ        :            Γ ⊢∞ nat    -> Γ ⊢∞ nat
-    caseNatⁱ  : ∀ {σ}   -> Γ ⊢∞ nat    -> Γ ⊢∞ σ      -> Γ ⊢∞ nat ⇒ σ        -> Γ ⊢∞ σ
-    nilⁱ      : ∀ {σ}   -> Γ ⊢∞ list σ
-    _::ⁱ_     : ∀ {σ}   -> Γ ⊢∞ σ      -> Γ ⊢∞ list σ -> Γ ⊢∞ list σ
-    caseListⁱ : ∀ {σ τ} -> Γ ⊢∞ list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
-    checkpoint : ∀ {σ} -> Tag -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
+  data _⊢∞_ : Links
+
+  open Constructors _⊢∞_
+
+  data _⊢∞_ where
+    varⁱ : Var
+    ƛⁱ_  : Lam
+    _·ⁱ_ : App
+    zⁱ        : Z
+    sⁱ        : S
+    caseNatⁱ  : CaseNat
+    nilⁱ      : Nil
+    _::ⁱ_     : Cons
+    caseListⁱ : CaseList
+    checkpoint : ∀ {Γ σ} -> Tag -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
     
   ⟨_⟩_⊢∞_ = _⊢∞_
 open Infinite public using (⟨_⟩_⊢∞_)
 
-data _⊢ᵘⁿᵉ_ Γ : Type -> Set where
-  varᵘⁿᵉ : ∀ {σ}   -> σ ∈ Γ        -> Γ ⊢ᵘⁿᵉ σ
-  _·ᵘⁿᵉ_ : ∀ {σ τ} -> Γ ⊢ᵘⁿᵉ σ ⇒ τ -> Γ ⊢ⁿᶠ σ  -> Γ ⊢ᵘⁿᵉ τ
-  caseNatᵘⁿᵉ  : ∀ {σ}   -> Γ ⊢ᵘⁿᵉ nat    -> Γ ⊢ⁿᶠ σ -> Γ ⊢ⁿᶠ nat ⇒ σ        -> Γ ⊢ᵘⁿᵉ σ
-  caseListᵘⁿᵉ : ∀ {σ τ} -> Γ ⊢ᵘⁿᵉ list σ -> Γ ⊢ⁿᶠ τ -> Γ ⊢ⁿᶠ σ ⇒ list σ ⇒ τ -> Γ ⊢ᵘⁿᵉ τ
+data _⊢ᵘⁿᵉ_ : Links
+
+open ConstructorsMutual _⊢ᵘⁿᵉ_ _⊢ⁿᶠ_
+
+data _⊢ᵘⁿᵉ_ where
+  varᵘⁿᵉ : Var
+  _·ᵘⁿᵉ_ : App
+  caseNatᵘⁿᵉ  : CaseNat
+  caseListᵘⁿᵉ : CaseList
 
 module _ where
   private module I = Infinite
@@ -61,8 +71,10 @@ recreate : ∀ {Γ σ τ} -> Γ ⊢ᵘⁿᵉ σ -> Clauses Γ σ τ -> Γ ⊢ᵘ
 recreate n  (natᶜ  y g) = caseNatᵘⁿᵉ  n  y g
 recreate xs (listᶜ y g) = caseListᵘⁿᵉ xs y g
 
-Kripke : Con -> Type -> Type -> Set
-Kripke Γ σ τ = ∀ {Δ} -> Γ ⊆ Δ -> Δ ⊢ σ -> Δ ⊢ τ
+open Kripkable record
+  { _∙_  = _⊢_
+  ; varˢ = var
+  }
 
 kripke : ∀ {Γ σ τ} -> Clauses Γ σ τ -> Kripke Γ σ τ
 kripke (natᶜ  y g) ι n  = caseNat  n  (renᵗ ι (embⁿᶠ y)) (renᵗ ι (embⁿᶠ g))
@@ -74,7 +86,7 @@ data Perforate Γ τ : Set where
 
 compᵖ : ∀ {Γ τ ν} -> Perforate Γ ν -> Kripke Γ τ ν -> Perforate Γ τ -> Perforate Γ ν
 compᵖ p k₂  before    = p
-compᵖ p k₂ (now t k₁) = now t (λ ι -> k₂ ι ∘ k₁ ι)
+compᵖ p k₂ (now t k₁) = now t (k₂ ∘ᵏ k₁)
 
 mapᵖ : ∀ {Γ τ ν} -> Kripke Γ τ ν -> Perforate Γ τ -> Perforate Γ ν
 mapᵖ = compᵖ before

@@ -4,7 +4,7 @@ open import SC.Prelude public
 
 infixr 6 _⇒_
 infixl 5 _▻_
-infix  4 _⊆_ _∈_ _⊢_ _∋_
+infix  4 _⊆_ _∈_ _∋_ _⊢_
 infix  3 ƛ_ fix_
 infixl 6 _·_
 infixr 5 _::_
@@ -34,18 +34,6 @@ data _∈_ σ : Con -> Set where
   vz  : ∀ {Γ}   -> σ ∈ Γ ▻ σ
   vs_ : ∀ {Γ τ} -> σ ∈ Γ     -> σ ∈ Γ ▻ τ
 
-data _⊢_ Γ : Type -> Set where
-  var  : ∀ {σ}   -> σ ∈ Γ     -> Γ ⊢ σ
-  ƛ_   : ∀ {σ τ} -> Γ ▻ σ ⊢ τ -> Γ ⊢ σ ⇒ τ
-  _·_  : ∀ {σ τ} -> Γ ⊢ σ ⇒ τ -> Γ ⊢ σ     -> Γ ⊢ τ
-  fix_ : ∀ {σ}   -> Γ ⊢ σ ⇒ σ -> Γ ⊢ σ
-  z        :            Γ ⊢ nat
-  s        :            Γ ⊢ nat    -> Γ ⊢ nat
-  caseNat  : ∀ {σ}   -> Γ ⊢ nat    -> Γ ⊢ σ      -> Γ ⊢ nat ⇒ σ        -> Γ ⊢ σ
-  nil      : ∀ {σ}   -> Γ ⊢ list σ
-  _::_     : ∀ {σ}   -> Γ ⊢ σ      -> Γ ⊢ list σ -> Γ ⊢ list σ
-  caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
-
 Links : Set₁
 Links = Con -> Type -> Set
 
@@ -57,9 +45,6 @@ _∙_ ∸> _◆_ = ∀ {σ Γ} -> Γ ∙ σ -> Γ ◆ σ
 
 _∋_ : Links
 _∋_ = flip _∈_
-
-Term : Type -> Set
-Term σ = ∀ {Γ} -> Γ ⊢ σ
 
 lenᶜ : Con -> ℕ
 lenᶜ  ε      = 0
@@ -91,6 +76,45 @@ unren (skip ι)  vz    = nothing
 unren (skip ι) (vs v) = unren ι v
 unren (keep ι)  vz    = just vz
 unren (keep ι) (vs v) = vs_ <$> unren ι v
+
+module ConstructorsMutual (ne nf : Links) where
+  infix 4 _∙ⁿᵉ_ _∙ⁿᶠ_
+  _∙ⁿᵉ_ = ne
+  _∙ⁿᶠ_ = nf
+
+  Var = ∀ {Γ σ}   -> σ ∈ Γ       -> Γ ∙ⁿᵉ σ
+  App = ∀ {Γ σ τ} -> Γ ∙ⁿᵉ σ ⇒ τ -> Γ ∙ⁿᶠ σ -> Γ ∙ⁿᵉ τ
+  Fix = ∀ {Γ σ}   -> Γ ∙ⁿᶠ σ ⇒ σ -> Γ ∙ⁿᵉ σ
+  CaseNat  = ∀ {Γ σ}   -> Γ ∙ⁿᵉ nat    -> Γ ∙ⁿᶠ σ -> Γ ∙ⁿᶠ nat ⇒ σ        -> Γ ∙ⁿᵉ σ
+  CaseList = ∀ {Γ σ τ} -> Γ ∙ⁿᵉ list σ -> Γ ∙ⁿᶠ τ -> Γ ∙ⁿᶠ σ ⇒ list σ ⇒ τ -> Γ ∙ⁿᵉ τ
+
+  Ne  = ∀ {Γ σ}   -> Γ ∙ⁿᵉ σ     -> Γ ∙ⁿᶠ σ
+  Lam = ∀ {Γ σ τ} -> Γ ▻ σ ∙ⁿᶠ τ -> Γ ∙ⁿᶠ σ ⇒ τ
+  Z    = ∀ {Γ}   -> Γ ∙ⁿᶠ nat
+  S    = ∀ {Γ}   -> Γ ∙ⁿᶠ nat    -> Γ ∙ⁿᶠ nat
+  Nil  = ∀ {Γ σ} -> Γ ∙ⁿᶠ list σ
+  Cons = ∀ {Γ σ} -> Γ ∙ⁿᶠ σ      -> Γ ∙ⁿᶠ list σ -> Γ ∙ⁿᶠ list σ
+
+module Constructors links = ConstructorsMutual links links
+
+data _⊢_ : Links
+
+open Constructors _⊢_
+
+data _⊢_ where
+  var  : Var
+  ƛ_   : Lam
+  _·_  : App
+  fix_ : Fix
+  z        : Z
+  s        : S
+  caseNat  : CaseNat
+  nil      : Nil
+  _::_     : Cons
+  caseList : CaseList
+
+Term : Type -> Set
+Term σ = ∀ {Γ} -> Γ ⊢ σ
 
 renᵗ : Renames _⊢_
 renᵗ ι (var v) = var (ren ι v)
