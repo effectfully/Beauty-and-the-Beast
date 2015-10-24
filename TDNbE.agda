@@ -33,20 +33,20 @@ open Kripkable record
 mutual
   renᵐ : Renames _⊨_
   renᵐ {nat}    ι n  = renⁿᶠ ι n
-  renᵐ {list σ} ι xs = rensᵐ ι xs
+  renᵐ {list σ} ι xs = renListᵐ ι xs
   renᵐ {σ ⇒ τ}  ι x  = smap (renⁿᵉ ι) (renᵏ ι) x
 
-  rensᵐ : Renames Listᵐ
-  rensᵐ ι (list⁺ xs) = list⁺ (renⁿᵉ ι xs)
-  rensᵐ ι  []⁺       = []⁺
-  rensᵐ ι (x ∷⁺ xs)  = renᵐ ι x ∷⁺ rensᵐ ι xs
+  renListᵐ : Renames Listᵐ
+  renListᵐ ι (list⁺ xs) = list⁺ (renⁿᵉ ι xs)
+  renListᵐ ι  []⁺       = []⁺
+  renListᵐ ι (x ∷⁺ xs)  = renᵐ ι x ∷⁺ renListᵐ ι xs
 
 mutual
   readback : _⊨_ ∸> _⊢ⁿᶠ_
   readback {nat}     n       = n
   readback {list σ}  xs      = readbackList xs
   readback {σ ⇒ τ}  (inj₁ n) = neⁿᶠ n
-  readback {σ ⇒ τ}  (inj₂ k) = ƛⁿᶠ (readback (runᵏ k))
+  readback {σ ⇒ τ}  (inj₂ k) = ƛⁿᶠ (readback (apᵏ k))
 
   readbackList : ∀ {σ Γ} -> Listᵐ Γ σ -> Γ ⊢ⁿᶠ list σ
   readbackList (list⁺ xs) = neⁿᶠ xs

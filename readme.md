@@ -6,7 +6,7 @@ It's a toy supercompiler for STLC with numbers, lists, pattern matching and gene
 
 We have
 
-Terms:
+Terms (after expanding of aliases):
 
 ```
 data _⊢_ (Γ : Con) : Type -> Set where
@@ -22,32 +22,16 @@ data _⊢_ (Γ : Con) : Type -> Set where
   caseList : ∀ {σ τ} -> Γ ⊢ list σ -> Γ ⊢ τ      -> Γ ⊢ σ ⇒ list σ ⇒ τ -> Γ ⊢ τ
 ```
 
-NbE, defined in terms of `quote` (or `readback`) with first-order closures (which appear to be somewhat faster than higher-order closures) and explicit weakening in the semantics (we collect `weaken`s and then weaken a whole term at once instead of retraversing the term over and over again):
+Some [nice syntactic sugar](https://github.com/effectfully/Beauty-and-the-Beast/blob/master/Jigger.agda) stolen from Conor McBride and generalized to handle n-ary lambdas.
+
+Two NbEs ([type-directed](https://github.com/effectfully/Beauty-and-the-Beast/blob/master/TDNbE.agda), [non-strictly positive](https://github.com/effectfully/Beauty-and-the-Beast/blob/master/NbE.agda)).
 
 ```
-mutual
-  quoteⁿᵉ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ˢⁿᵉ σ -> Δ ⊢ⁿᵉ σ
-  quoteⁿᵉ φ (varˢⁿᵉ v)      = varⁿᵉ (weakenᵛᵃʳ φ v)
-  quoteⁿᵉ φ (f ·ˢⁿᵉ x)      = quoteⁿᵉ φ f ·ⁿᵉ quoteⁿᶠ φ x
-  quoteⁿᵉ φ (fixˢⁿᵉ f)      = fixⁿᵉ (quoteⁿᶠ φ f)
-  quoteⁿᵉ φ (weakenˢⁿᵉ ψ x) = quoteⁿᵉ (φ ∘ˢᵘᵇ ψ) x
-  quoteⁿᵉ φ (caseNatˢⁿᵉ  n  y g) = caseNatⁿᵉ  (quoteⁿᵉ φ n)  (quoteⁿᶠ φ y) (quoteⁿᶠ φ g)
-  quoteⁿᵉ φ (caseListˢⁿᵉ xs y g) = caseListⁿᵉ (quoteⁿᵉ φ xs) (quoteⁿᶠ φ y) (quoteⁿᶠ φ g)
 
-  quoteⁿᶠ : ∀ {Γ Δ σ} -> Γ ⊆ Δ -> Γ ⊢ˢⁿᶠ σ -> Δ ⊢ⁿᶠ σ
-  quoteⁿᶠ φ (neˢⁿᶠ x)       = neⁿᶠ (quoteⁿᵉ φ x)
-  quoteⁿᶠ φ (ƛˢⁿᶠ b ρ)      = ƛⁿᶠ (quoteⁿᶠ (keep φ) (⟦ b ⟧ (weakenᵉⁿᵛ top ρ ▷ varˢⁿᶠ vz)))
-  quoteⁿᶠ φ (weakenˢⁿᶠ ψ x) = quoteⁿᶠ (φ ∘ˢᵘᵇ ψ) x
-  quoteⁿᶠ φ  zˢⁿᶠ        = zⁿᶠ
-  quoteⁿᶠ φ (sˢⁿᶠ x)     = sⁿᶠ (quoteⁿᶠ φ x)
-  quoteⁿᶠ φ  nilˢⁿᶠ      = nilⁿᶠ
-  quoteⁿᶠ φ (x ::ˢⁿᶠ xs) = quoteⁿᶠ φ x ::ⁿᶠ quoteⁿᶠ φ xs
-```
-
-Infinite lambda terms:
+Infinite lambda terms (after expanding of aliases):
 
 ```
-data _⊢∞_ (Γ : Con) : Type -> Set where
+data _⊢∞_  : Type -> Set where
   var : ∀ {σ}   -> σ ∈ Γ      -> Γ ⊢∞ σ
   ƛ_  : ∀ {σ τ} -> Γ ▻ σ ⊢∞ τ -> Γ ⊢∞ σ ⇒ τ
   _·_ : ∀ {σ τ} -> Γ ⊢∞ σ ⇒ τ -> Γ ⊢∞ σ     -> Γ ⊢∞ τ
@@ -57,7 +41,7 @@ data _⊢∞_ (Γ : Con) : Type -> Set where
   nil      : ∀ {σ}   -> Γ ⊢∞ list σ
   _::_     : ∀ {σ}   -> Γ ⊢∞ σ      -> Γ ⊢∞ list σ -> Γ ⊢∞ list σ
   caseList : ∀ {σ τ} -> Γ ⊢∞ list σ -> Γ ⊢∞ τ      -> Γ ⊢∞ σ ⇒ list σ ⇒ τ -> Γ ⊢∞ τ
-  checkpoint : ∀ {σ} -> Bool -> Name -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
+  checkpoint : ∀ {σ} -> Tag -> Γ ⊢ σ -> ∞ (Γ ⊢∞ σ) -> Γ ⊢∞ σ
 ```
 
 Every infinite lambda term represents unfolding of a regular lambda term (note the absense of `fix_`). Recursion happens in the `checkpoint` constructor, which also receives some configuration.
@@ -79,6 +63,8 @@ data Result : Set where
 ```
 
 ## Supercompilation
+
+**THE CODE WAS CHANGED**. But it became more obfuscated, and the algorithm remains almost entirely the same, so I'll leave this section untouched.
 
 The `revert` function
 
@@ -148,6 +134,8 @@ and then call `build` recursively. When there are no nested `case`s, we make a c
 
 In the `build` function we make a checkpoint every time `unroll` succeeds.
 
+## Residualization
+
 The `scatter` function deletes all checkpoints, that do not correspond to calls to recursive functions:
 
 ```
@@ -171,20 +159,20 @@ scε = residualize [] ∘ proj₂ ∘ scatter [] ∘ build ∘ norm
 
 ```
 tmap : ∀ {σ τ} -> Term ((σ ⇒ τ) ⇒ list σ ⇒ list τ)
-tmap = ƛ fix ƛ ƛ caseList (var vz)
-                    nil
-                   (ƛ ƛ var (vs vs vs vs vz) · var (vs vz) :: var (vs vs vs vz) · var vz)
+tmap = 1 # λ f → fix 2 # λ r xs → caseList xs
+                            nil
+                           (2 # λ x xs' → f · x :: r · xs')
 
 tmap-tmap : ∀ {σ τ ν} -> Term ((τ ⇒ ν) ⇒ (σ ⇒ τ) ⇒ list σ ⇒ list ν)
-tmap-tmap = ƛ ƛ ƛ tmap · var (vs vs vz) · (tmap · var (vs vz) · var vz)
+tmap-tmap = 3 # λ g f xs → tmap · g · (tmap · f · xs)
 
 tapp : ∀ {σ} -> Term (list σ ⇒ list σ ⇒ list σ)
-tapp = fix ƛ ƛ ƛ caseList (var (vs vz))
-                   (var vz)
-                   (ƛ ƛ var (vs vz) :: var (vs vs vs vs vz) · var vz · var (vs vs vz))
+tapp = fix 3 # λ r xs ys → caseList xs
+                  ys
+                 (2 # λ x xs' → x :: r · xs' · ys)
 
 tapp-tapp : ∀ {σ} -> Term (list σ ⇒ list σ ⇒ list σ ⇒ list σ)
-tapp-tapp = ƛ ƛ ƛ tapp · (tapp · var (vs vs vz) · var (vs vz)) · var vz
+tapp-tapp = 3 # λ xs ys zs → tapp · (tapp · xs · ys) · zs
 ```
 
 `scε tmap-tmap` gives
@@ -235,20 +223,20 @@ which looks OK modulo η-expansion.
 
 ```
 tdouble : Term (nat ⇒ nat)
-tdouble = fix ƛ ƛ caseNat (var vz)
+tdouble = fix 2 # λ r n → caseNat n
                      z
-                    (ƛ s (s (var (vs vs vz) · var vz)))
+                    (1 # λ n' → s (s (r · n')))
 
 tplus : Term (nat ⇒ nat ⇒ nat)
-tplus = fix ƛ ƛ ƛ caseNat (var (vs vz))
-                    (var vz)
-                    (ƛ s (var (vs vs vs vz) · var vz · var (vs vz)))
+tplus = fix 3 # λ r n m → caseNat n
+                   m
+                  (1 # λ n' → s (r · n' · m))
 
 tdouble-tplus : Term (nat ⇒ nat ⇒ nat)
-tdouble-tplus = ƛ ƛ tdouble · (tplus · var (vs vz) · var vz)
+tdouble-tplus = 2 # λ n m → tdouble · (tplus · n · m)
 
 tplus-tdouble : Term (nat ⇒ nat ⇒ nat)
-tplus-tdouble = ƛ ƛ tplus · (tdouble · var (vs vz)) · (tdouble · var vz)
+tplus-tdouble = 2 # λ n m → tplus · (tdouble · n) · (tdouble · m)
 ```
 
 Both `tdouble-tplus` and `tplus-tdouble` supercompile to the same expression:

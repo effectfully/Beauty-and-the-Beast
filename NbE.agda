@@ -103,7 +103,7 @@ mutual
 
   quoteⁿᶠ : _⊢ˢⁿᶠ_ ∸> _⊢ⁿᶠ_
   quoteⁿᶠ (neˢⁿᶠ x)  = neⁿᶠ (quoteⁿᵉ x)
-  quoteⁿᶠ (lamˢⁿᶠ k) = ƛⁿᶠ (quoteⁿᶠ (k top (varˢⁿᶠ vz))) -- runᵏ k
+  quoteⁿᶠ (lamˢⁿᶠ k) = ƛⁿᶠ (quoteⁿᶠ (k top (varˢⁿᶠ vz))) -- apᵏ k
   quoteⁿᶠ  zˢⁿᶠ        = zⁿᶠ
   quoteⁿᶠ (sˢⁿᶠ x)     = sⁿᶠ (quoteⁿᶠ x)
   quoteⁿᶠ  nilˢⁿᶠ      = nilⁿᶠ

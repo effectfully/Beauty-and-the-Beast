@@ -14,8 +14,8 @@ record Kripkable : Set₁ where
   Kripke : Con -> Type -> Type -> Set
   Kripke Γ σ τ = ∀ {Δ} -> Γ ⊆ Δ -> Δ ∙ σ -> Δ ∙ τ
 
-  runᵏ : ∀ {Γ σ τ} -> Kripke Γ σ τ -> Γ ▻ σ ∙ τ
-  runᵏ k = k top (varˢ vz)
+  apᵏ : ∀ {Γ σ τ} -> Kripke Γ σ τ -> Γ ▻ σ ∙ τ
+  apᵏ k = k top (varˢ vz)
 
   _·ᵏ_ : ∀ {Γ σ τ} -> Kripke Γ σ τ -> Γ ∙ σ -> Γ ∙ τ
   k ·ᵏ t = k stop t
