@@ -26,8 +26,6 @@ Some [nice syntactic sugar](https://github.com/effectfully/Beauty-and-the-Beast/
 
 Two NbEs ([type-directed](https://github.com/effectfully/Beauty-and-the-Beast/blob/master/TDNbE.agda), [non-strictly positive](https://github.com/effectfully/Beauty-and-the-Beast/blob/master/NbE.agda)).
 
-```
-
 Infinite lambda terms (after expanding of aliases):
 
 ```
