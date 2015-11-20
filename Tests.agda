@@ -186,3 +186,18 @@ scε-tconcat-tmap-tconcat  = λ {σ}     -> scε (tconcat-tmap-tconcat {σ})
 -- Are these two α-equal?
 scε-tfoldr-tapp           = λ {σ τ}   -> scε (tfoldr-tapp   {σ} {τ})
 scε-tfoldr-tfoldr         = λ {σ τ}   -> scε (tfoldr-tfoldr {σ} {τ})
+
+scε-tmult2                =              scε  (tmult · s (s z))
+
+-- Hmm:
+-- lam "x0"
+-- (Let "r1" :=
+--  lam "x0"
+--  (caseNat (var "x0")
+--   (Let "r4" :=
+--    lam "x0"
+--    (caseNat (var "x0") z
+--     (lam "x1" (s (var "r4" · var "x1" · var "x0"))))
+--    In (var "r4" · var "x0"))
+--   (lam "x1" (s (var "r1" · var "x1" · var "x0"))))
+--  In (var "r1" · var "x0"))

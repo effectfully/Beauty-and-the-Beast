@@ -6,8 +6,8 @@ open import Function       hiding (_∋_)                                       
 open import Relation.Binary.PropositionalEquality hiding ([_]; decSetoid; setoid) public
 open import Data.Empty                                                            public
 open import Data.Unit.Base hiding (_≤_; module _≤_)                               public
-open import Data.Bool.Base                                                        public
-open import Data.Nat.Base  hiding (_⊔_)                                           public
+open import Data.Bool.Base hiding (_≟_)                                           public
+open import Data.Nat.Base  hiding (_≟_; _⊔_)                                      public
 open import Data.Nat.Show                                                         public
 open import Data.Fin       using (Fin; zero; suc)                                 public
 open import Data.Maybe     hiding (module Eq; Eq)                                 public
@@ -20,8 +20,8 @@ open ≡-Reasoning                                                              
 open RawMonad {{...}}      hiding (zipWith)                                       public
 
 open import Relation.Nullary.Decidable
-open import Data.Fin.Properties as Fin
-open import Data.String as String hiding (_++_; _==_)
+open import Data.Fin.Properties using (_≟_)
+open import Data.String as String hiding (_++_; _==_; _≟_)
 
 infixr 5 _∷⁺_
 
@@ -44,7 +44,7 @@ data List⁺ {α β} (A : Set α) (B : Set β) : Set (α ⊔ β) where
 
 instance
   Eq-Fin : ∀ {n} -> Eq (Fin n) 
-  Eq-Fin = record { _==_ = λ i j -> ⌊ i Fin.≟ j ⌋ }
+  Eq-Fin = record { _==_ = λ i j -> ⌊ i ≟ j ⌋ }
 
   Eq-String : Eq String
   Eq-String = record { _==_ = String._==_ }
